@@ -1,12 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export function toTaskName(prefix: string, taskId: string): string {
-  const cleanTaskId = String(taskId).trim();
-  if (!cleanTaskId) {
+export function toTaskName(prefix: string, taskIdOrName: string): string {
+  const cleanTaskIdOrName = String(taskIdOrName).trim();
+  if (!cleanTaskIdOrName) {
     throw new Error("Task id is required.");
   }
-  return `${prefix}-${cleanTaskId}`;
+
+  const prefixWithDash = `${prefix}-`;
+  if (cleanTaskIdOrName.startsWith(prefixWithDash)) {
+    return cleanTaskIdOrName;
+  }
+
+  return `${prefixWithDash}${cleanTaskIdOrName}`;
 }
 
 export function getTaskPath(
