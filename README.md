@@ -99,7 +99,9 @@ ait tasks
 ait remove 1437
 ```
 
+You can pass either the raw id (`1437`) or full task name (`AIT-1437`).
 You must type the exact task name (for example `AIT-1437`) to confirm.
+After confirmation, removal is forced (`git worktree remove --force`), so uncommitted changes in that task worktree are discarded.
 
 ### Purge old tasks (default: 14 days)
 
@@ -109,6 +111,7 @@ ait purge-old --days 21
 ```
 
 You must type a confirmation token (`PURGE <count>`) before deletion.
+After confirmation, each worktree removal is forced, so uncommitted changes in purged task worktrees are discarded.
 
 ### Diagnostics
 

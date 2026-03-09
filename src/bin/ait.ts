@@ -278,7 +278,7 @@ program
         taskName
       );
 
-      removeWorktree(baseRepoRoot, taskPath);
+      removeWorktree(baseRepoRoot, taskPath, { force: true });
       maybeDeleteTaskBranch(baseRepoRoot, taskName);
       console.log(pc.green(`Removed task: ${taskPath}`));
     } catch (error) {
@@ -399,7 +399,7 @@ program
       const failures: string[] = [];
       for (const candidate of purgeCandidates) {
         try {
-          removeWorktree(baseRepoRoot, candidate.taskPath);
+          removeWorktree(baseRepoRoot, candidate.taskPath, { force: true });
           maybeDeleteTaskBranch(baseRepoRoot, candidate.taskName);
           removedCount += 1;
         } catch (error) {

@@ -35,8 +35,17 @@ export function createOrAttachWorktree({
   });
 }
 
-export function removeWorktree(repoRoot: string, taskPath: string): void {
-  runInteractive("git", ["worktree", "remove", taskPath], { cwd: repoRoot });
+export function removeWorktree(
+  repoRoot: string,
+  taskPath: string,
+  options: { force?: boolean } = {}
+): void {
+  const args = ["worktree", "remove"];
+  if (options.force) {
+    args.push("--force");
+  }
+  args.push(taskPath);
+  runInteractive("git", args, { cwd: repoRoot });
 }
 
 export function deleteLocalBranch(
