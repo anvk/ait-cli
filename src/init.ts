@@ -23,7 +23,12 @@ export async function interactiveInit(repoRoot: string): Promise<string> {
 
   const rl = readline.createInterface({ input, output });
   try {
-    const prefix = await promptWithDefault(rl, "Task prefix", DEFAULT_CONFIG.prefix);
+    const taskPrefix = await promptWithDefault(rl, "Task prefix (included literally)", DEFAULT_CONFIG.taskPrefix);
+    const branchPrefix = await promptWithDefault(
+      rl,
+      "Branch prefix (optional, e.g. alex/)",
+      DEFAULT_CONFIG.branchPrefix
+    );
     const tasksDir = await promptWithDefault(
       rl,
       "Tasks directory (relative to repo root)",
@@ -39,8 +44,24 @@ export async function interactiveInit(repoRoot: string): Promise<string> {
       "Base git folder (relative to this config directory)",
       baseFolderSuggestion
     );
+    const oldTaskDaysRaw = await promptWithDefault(
+      rl,
+      "Days before a task is considered old in task listings",
+      String(DEFAULT_CONFIG.oldTaskDays)
+    );
+    const oldTaskDays = Number.parseInt(oldTaskDaysRaw, 10);
+    if (!Number.isInteger(oldTaskDays) || oldTaskDays < 1) {
+      throw new Error("`oldTaskDays` must be a positive integer.");
+    }
 
-    const configPath = writeConfig(repoRoot, { prefix, tasksDir, baseRef, baseFolder });
+    const configPath = writeConfig(repoRoot, {
+      taskPrefix,
+      branchPrefix,
+      tasksDir,
+      baseRef,
+      baseFolder,
+      oldTaskDays
+    });
     return configPath;
   } finally {
     rl.close();

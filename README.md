@@ -8,6 +8,7 @@ It is designed for workflows where you keep one configurable "base" repo (for ex
 
 - Initializes per-directory config with `.ait.json`
 - Creates task worktrees from a configured base git ref (default `origin/main`)
+- Mirrors local `baseFolder` contents into new task folders (including dotfiles, excluding `.git`)
 - Opens existing task folders in Cursor
 - Supports smart open-or-create with a single command
 - Lists, removes, and purges old task folders safely (with typed confirmation)
@@ -15,14 +16,34 @@ It is designed for workflows where you keep one configurable "base" repo (for ex
 
 ## Quick start
 
-### 1) Install dependencies
+### Step 1: Install AIT
+
+#### One-line install (recommended)
+
+Using `curl`:
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/ait-cli/main/tools/install.sh)"
+```
+
+Using `wget`:
+
+```bash
+sh -c "$(wget -qO- https://raw.githubusercontent.com/anvk/ait-cli/main/tools/install.sh)"
+```
+
+This installs the project to `~/.ait-cli`, runs build, and links the `ait` command globally.
+
+#### Manual setup (alternative)
+
+1. Install dependencies
 
 ```bash
 cd ~/ait-cli
 npm install
 ```
 
-### 2) Build and install globally
+2. Build and install globally
 
 ```bash
 npm run build
@@ -31,7 +52,10 @@ npm link
 
 Now the `ait` command is available globally.
 
-### 3) Initialize config in your workspace directory
+### Step 2: Initialize a workspace (required per root folder)
+
+Your workspace should contain (or point to) your main/base project folder - the repository `ait` will use as the source when creating each task worktree.
+In other words, this is the parent/root folder where `ait` will manage `.ait.json`, your `tasks` directory, and your configured `baseFolder`.
 
 ```bash
 cd /path/to/your/workspace
@@ -39,6 +63,7 @@ ait init
 ```
 
 `ait init` asks questions and writes `.ait.json` in the current directory.
+This step is required for each workspace root where you want to use `ait`.
 
 ## Configuration
 
@@ -48,19 +73,23 @@ Example:
 
 ```json
 {
-  "prefix": "AIT",
+  "taskPrefix": "AIT-",
+  "branchPrefix": "alex/",
   "tasksDir": "tasks",
   "baseRef": "origin/main",
-  "baseFolder": "myproject"
+  "baseFolder": "myproject",
+  "oldTaskDays": 14
 }
 ```
 
 Field meanings:
 
-- `prefix`: task folder prefix (`AIT` -> `AIT-1437`)
+- `taskPrefix`: literal task prefix (`AIT-` + `1437` -> `AIT-1437`)
+- `branchPrefix`: optional branch prefix (`alex/` + `AIT-1437` -> `alex/AIT-1437`)
 - `tasksDir`: where task folders are created relative to config directory
 - `baseRef`: git ref used for creating new task branches/worktrees
 - `baseFolder`: folder (relative to config dir) that points to the base git repository
+- `oldTaskDays`: threshold used by `ait tasks`/`ait list` to split recent vs old tasks, and default threshold for `ait purge`
 
 ## Common command usage
 
@@ -72,6 +101,7 @@ ait task 1437
 
 - If `tasks/AIT-1437` exists, it opens it.
 - If it does not exist, it creates it from `baseRef` and opens it.
+- New branches are named `${branchPrefix}${taskName}` (for example `alex/AIT-1437`).
 
 ### Create only
 
@@ -93,6 +123,8 @@ ait list
 ait tasks
 ```
 
+`oldTaskDays` from config controls which tasks appear in the `old` section (default: `14`) and is used as the default threshold for `ait purge`.
+
 ### Remove one task (with typed confirmation)
 
 ```bash
@@ -103,11 +135,11 @@ You can pass either the raw id (`1437`) or full task name (`AIT-1437`).
 You must type the exact task name (for example `AIT-1437`) to confirm.
 After confirmation, removal is forced (`git worktree remove --force`), so uncommitted changes in that task worktree are discarded.
 
-### Purge old tasks (default: 14 days)
+### Purge old tasks (default: config `oldTaskDays`, usually 14)
 
 ```bash
-ait purge-old
-ait purge-old --days 21
+ait purge
+ait purge --days 21
 ```
 
 You must type a confirmation token (`PURGE <count>`) before deletion.
@@ -117,8 +149,10 @@ After confirmation, each worktree removal is forced, so uncommitted changes in p
 
 ```bash
 ait doctor
+ait status
 ```
 
+`status` is an alias for `doctor`.
 Checks config validity, base folder/repo, base ref, and Cursor CLI availability.
 
 ### Version/help
@@ -147,4 +181,4 @@ ait --repo /path/to/workspace doctor
 
 - `ait` expects `cursor` CLI to be installed and available in `PATH`.
 - `create` fails if a target task folder already exists (use `open` or `task`).
-- `remove` and `purge-old` are intentionally guarded by typed confirmations.
+- `remove` and `purge` are intentionally guarded by typed confirmations.

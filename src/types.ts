@@ -1,8 +1,10 @@
 export interface AitConfig {
-  prefix: string;
+  taskPrefix: string;
+  branchPrefix: string;
   tasksDir: string;
   baseRef: string;
   baseFolder: string;
+  oldTaskDays: number;
 }
 
 export interface CreateOrAttachWorktreeArgs {
