@@ -1,18 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export function toTaskName(prefix: string, taskIdOrName: string): string {
+export function toTaskName(taskPrefix: string, taskIdOrName: string): string {
   const cleanTaskIdOrName = String(taskIdOrName).trim();
   if (!cleanTaskIdOrName) {
     throw new Error("Task id is required.");
   }
 
-  const prefixWithDash = `${prefix}-`;
-  if (cleanTaskIdOrName.startsWith(prefixWithDash)) {
+  if (cleanTaskIdOrName.startsWith(taskPrefix)) {
     return cleanTaskIdOrName;
   }
 
-  return `${prefixWithDash}${cleanTaskIdOrName}`;
+  return `${taskPrefix}${cleanTaskIdOrName}`;
 }
 
 export function getTaskPath(
@@ -38,10 +37,51 @@ export function ensureTasksDir(repoRoot: string, tasksDir: string, baseFolder = 
   return absoluteTasksDir;
 }
 
+function isPathInside(childPath: string, parentPath: string): boolean {
+  const relative = path.relative(parentPath, childPath);
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+export function syncBaseFolderIntoTask(baseFolderPath: string, taskPath: string): void {
+  if (!fs.existsSync(baseFolderPath) || !fs.statSync(baseFolderPath).isDirectory()) {
+    throw new Error(`Base folder does not exist: ${baseFolderPath}`);
+  }
+
+  if (!fs.existsSync(taskPath)) {
+    fs.mkdirSync(taskPath, { recursive: true });
+  }
+  if (!fs.statSync(taskPath).isDirectory()) {
+    throw new Error(`Task destination is not a directory: ${taskPath}`);
+  }
+
+  const sourceRoot = fs.realpathSync.native(baseFolderPath);
+  const destinationRoot = fs.realpathSync.native(taskPath);
+  const entries = fs.readdirSync(sourceRoot, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (entry.name === ".git") {
+      continue;
+    }
+
+    const sourcePath = path.join(sourceRoot, entry.name);
+    if (isPathInside(destinationRoot, sourcePath)) {
+      // Avoid copying the folder that contains the destination into itself.
+      continue;
+    }
+
+    const destinationPath = path.join(destinationRoot, entry.name);
+    fs.cpSync(sourcePath, destinationPath, {
+      recursive: true,
+      force: true,
+      errorOnExist: false
+    });
+  }
+}
+
 export function listTaskFolders(
   repoRoot: string,
   tasksDir: string,
-  prefix: string,
+  taskPrefix: string,
   baseFolder = "."
 ): string[] {
   const absoluteTasksDir = resolveTasksRoot(repoRoot, tasksDir, baseFolder);
@@ -51,7 +91,7 @@ export function listTaskFolders(
 
   return fs
     .readdirSync(absoluteTasksDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${prefix}-`))
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(taskPrefix))
     .map((entry) => entry.name)
     .sort();
 }

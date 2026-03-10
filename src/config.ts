@@ -6,10 +6,12 @@ import type { AitConfig } from "./types.js";
 export const CONFIG_FILE = ".ait.json";
 
 export const DEFAULT_CONFIG: AitConfig = {
-  prefix: "AIT",
+  taskPrefix: "AIT-",
+  branchPrefix: "",
   tasksDir: "tasks",
   baseRef: "origin/main",
-  baseFolder: "."
+  baseFolder: ".",
+  oldTaskDays: 14
 };
 
 export function getRepoRoot(cwd = process.cwd()): string {
@@ -46,16 +48,25 @@ export function writeConfig(repoRoot: string, partialConfig: Partial<AitConfig>)
 }
 
 export function normalizeConfig(input: unknown): AitConfig {
-  const merged = { ...DEFAULT_CONFIG, ...(input as Partial<AitConfig>) };
+  const inputRecord = (input ?? {}) as Record<string, unknown>;
+  const legacyPrefix = inputRecord.prefix;
+  const merged = {
+    ...DEFAULT_CONFIG,
+    ...inputRecord,
+    taskPrefix: inputRecord.taskPrefix ?? legacyPrefix ?? DEFAULT_CONFIG.taskPrefix
+  } as Partial<AitConfig>;
+  const oldTaskDays = parsePositiveInt(merged.oldTaskDays, "oldTaskDays");
   const config: AitConfig = {
-    prefix: String(merged.prefix || DEFAULT_CONFIG.prefix).trim(),
+    taskPrefix: String(merged.taskPrefix || DEFAULT_CONFIG.taskPrefix).trim(),
+    branchPrefix: String(merged.branchPrefix || DEFAULT_CONFIG.branchPrefix).trim(),
     tasksDir: String(merged.tasksDir || DEFAULT_CONFIG.tasksDir).trim(),
     baseRef: String(merged.baseRef || DEFAULT_CONFIG.baseRef).trim(),
-    baseFolder: String(merged.baseFolder || DEFAULT_CONFIG.baseFolder).trim()
+    baseFolder: String(merged.baseFolder || DEFAULT_CONFIG.baseFolder).trim(),
+    oldTaskDays
   };
 
-  if (!config.prefix) {
-    throw new Error("Config `prefix` cannot be empty.");
+  if (!config.taskPrefix) {
+    throw new Error("Config `taskPrefix` cannot be empty.");
   }
   if (!config.tasksDir) {
     throw new Error("Config `tasksDir` cannot be empty.");
@@ -66,6 +77,29 @@ export function normalizeConfig(input: unknown): AitConfig {
   if (!config.baseFolder) {
     throw new Error("Config `baseFolder` cannot be empty.");
   }
+  if (!Number.isInteger(config.oldTaskDays) || config.oldTaskDays < 1) {
+    throw new Error("Config `oldTaskDays` must be a positive integer.");
+  }
 
   return config;
+}
+
+function parsePositiveInt(value: unknown, fieldName: string): number {
+  if (value == null) {
+    return DEFAULT_CONFIG.oldTaskDays;
+  }
+  if (typeof value === "number") {
+    if (Number.isInteger(value) && value > 0) {
+      return value;
+    }
+    throw new Error(`Config \`${fieldName}\` must be a positive integer.`);
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+    throw new Error(`Config \`${fieldName}\` must be a positive integer.`);
+  }
+  throw new Error(`Config \`${fieldName}\` must be a positive integer.`);
 }
