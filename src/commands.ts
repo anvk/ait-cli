@@ -10,6 +10,7 @@ import {
   createOrAttachWorktree,
   deleteLocalBranch,
   fetchOrigin,
+  rebaseCurrentBranchOnto,
   removeWorktree
 } from "./git.js";
 import { commandExists, run } from "./process.js";
@@ -229,6 +230,8 @@ export function runCreateCommand(taskId: string, options: { open: boolean }, rep
 
   console.log(pc.cyan("Fetching origin..."));
   fetchOrigin(baseRepoRoot);
+  console.log(pc.cyan(`Rebasing base folder onto ${config.baseRef}...`));
+  rebaseCurrentBranchOnto(baseRepoRoot, config.baseRef);
   console.log(pc.cyan(`Creating ${taskName} from ${config.baseRef}...`));
   createOrAttachWorktree({
     repoRoot: baseRepoRoot,
@@ -261,6 +264,8 @@ export function runTaskCommand(taskId: string, repoOption?: string): void {
 
   console.log(pc.cyan("Fetching origin..."));
   fetchOrigin(baseRepoRoot);
+  console.log(pc.cyan(`Rebasing base folder onto ${config.baseRef}...`));
+  rebaseCurrentBranchOnto(baseRepoRoot, config.baseRef);
   console.log(pc.cyan(`Creating ${taskName} from ${config.baseRef}...`));
   createOrAttachWorktree({
     repoRoot: baseRepoRoot,
@@ -297,10 +302,7 @@ export async function runRemoveCommand(taskId: string, repoOption?: string): Pro
     throw new Error(`Task folder does not exist: ${taskPath}`);
   }
 
-  await promptForExactConfirmation(
-    `Type '${taskName}' to permanently remove this task worktree:`,
-    taskName
-  );
+  await promptForExactConfirmation("Type 'delete' to permanently remove this task worktree:", "delete");
 
   removeWorktree(baseRepoRoot, taskPath, { force: true });
   maybeDeleteTaskBranch(baseRepoRoot, `${config.branchPrefix}${taskName}`);
