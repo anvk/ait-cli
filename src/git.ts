@@ -6,6 +6,10 @@ export function fetchOrigin(repoRoot: string): void {
   runInteractive("git", ["fetch", "origin"], { cwd: repoRoot });
 }
 
+export function rebaseCurrentBranchOnto(repoRoot: string, baseRef: string): void {
+  runInteractive("git", ["rebase", "--autostash", baseRef], { cwd: repoRoot });
+}
+
 function localBranchExists(repoRoot: string, branchName: string): boolean {
   try {
     run("git", ["show-ref", "--verify", `refs/heads/${branchName}`], { cwd: repoRoot });

@@ -100,7 +100,7 @@ ait task 1437
 ```
 
 - If `tasks/AIT-1437` exists, it opens it.
-- If it does not exist, it creates it from `baseRef` and opens it.
+- If it does not exist, it fetches/rebases the base repository onto `baseRef`, creates it from `baseRef`, and opens it.
 - New branches are named `${branchPrefix}${taskName}` (for example `alex/AIT-1437`).
 
 ### Create only
@@ -132,7 +132,7 @@ ait remove 1437
 ```
 
 You can pass either the raw id (`1437`) or full task name (`AIT-1437`).
-You must type the exact task name (for example `AIT-1437`) to confirm.
+You must type `delete` to confirm.
 After confirmation, removal is forced (`git worktree remove --force`), so uncommitted changes in that task worktree are discarded.
 
 ### Purge old tasks (default: config `oldTaskDays`, usually 14)
