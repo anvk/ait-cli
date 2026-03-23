@@ -16,7 +16,6 @@ import {
 import { commandExists, run } from "./process.js";
 import {
   ensureTasksDir,
-  getTaskLastUpdatedMs,
   getTaskPath,
   listTaskFolders,
   resolveTasksRoot,
@@ -120,10 +119,22 @@ function formatRelativeTime(fromMs: number, nowMs = Date.now()): string {
   return `${days}d ago`;
 }
 
-function getLastCommitSubject(taskPath: string): string | null {
+function getLastCommitMeta(taskPath: string): { subject: string | null; committedAtMs: number } | null {
   try {
-    const result = run("git", ["log", "-1", "--pretty=%s"], { cwd: taskPath });
-    return result.stdout || null;
+    const result = run("git", ["log", "-1", "--pretty=%ct%x09%s"], { cwd: taskPath });
+    const output = result.stdout.trim();
+    if (!output) {
+      return null;
+    }
+
+    const [unixSecondsRaw, ...subjectParts] = output.split("\t");
+    const unixSeconds = Number.parseInt(unixSecondsRaw, 10);
+    if (!Number.isFinite(unixSeconds) || unixSeconds <= 0) {
+      return null;
+    }
+
+    const subject = subjectParts.join("\t").trim() || null;
+    return { subject, committedAtMs: unixSeconds * 1000 };
   } catch {
     return null;
   }
@@ -134,12 +145,13 @@ function gatherTaskDisplayItems(configDir: string, tasksDir: string, taskPrefix:
   return taskNames
     .map((taskName) => {
       const taskPath = getTaskPath(configDir, tasksDir, taskName);
-      const lastUpdatedMs = getTaskLastUpdatedMs(taskPath);
+      const commitMeta = getLastCommitMeta(taskPath);
+      const lastUpdatedMs = commitMeta ? commitMeta.committedAtMs : fs.statSync(taskPath).mtimeMs;
       return {
         taskName,
         taskPath,
         lastUpdatedMs,
-        lastCommitSubject: getLastCommitSubject(taskPath)
+        lastCommitSubject: commitMeta ? commitMeta.subject : null
       };
     })
     .sort((a, b) => b.lastUpdatedMs - a.lastUpdatedMs);
@@ -324,23 +336,15 @@ export async function runPurgeCommand(options: { days?: string }, repoOption?: s
   }
 
   const baseRepoRoot = resolveBaseRepoRoot(configDir, config.baseFolder);
-  const taskNames = listTaskFolders(configDir, config.tasksDir, config.taskPrefix);
-  if (taskNames.length === 0) {
+  const taskItems = gatherTaskDisplayItems(configDir, config.tasksDir, config.taskPrefix);
+  if (taskItems.length === 0) {
     console.log(pc.yellow("No task folders found."));
     return;
   }
 
   const now = Date.now();
   const thresholdMs = days * 24 * 60 * 60 * 1000;
-  const purgeCandidates: Array<{ taskName: string; taskPath: string; lastUpdatedMs: number }> = [];
-
-  for (const taskName of taskNames) {
-    const taskPath = getTaskPath(configDir, config.tasksDir, taskName);
-    const lastUpdatedMs = getTaskLastUpdatedMs(taskPath);
-    if (now - lastUpdatedMs >= thresholdMs) {
-      purgeCandidates.push({ taskName, taskPath, lastUpdatedMs });
-    }
-  }
+  const purgeCandidates = taskItems.filter((item) => now - item.lastUpdatedMs >= thresholdMs);
 
   if (purgeCandidates.length === 0) {
     console.log(pc.yellow(`No tasks older than ${days} day(s) were found.`));
