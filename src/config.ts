@@ -1,9 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { run } from "./process.js";
-import type { AitConfig } from "./types.js";
+import { WARP_COLORS, type AitConfig, type WarpColor, type WarpTabConfig } from "./types.js";
 
 export const CONFIG_FILE = ".ait.json";
+
+export const DEFAULT_WARP_TABS: WarpTabConfig[] = [
+  { title: "API", path: "go", color: "red" },
+  { title: "UI", path: "ui", color: "blue" },
+  { title: "CLI", path: "." },
+  { title: "Claude", path: ".", color: "yellow", command: "claude" }
+];
 
 export const DEFAULT_CONFIG: AitConfig = {
   taskPrefix: "AIT-",
@@ -11,7 +18,8 @@ export const DEFAULT_CONFIG: AitConfig = {
   tasksDir: "tasks",
   baseRef: "origin/main",
   baseFolder: ".",
-  oldTaskDays: 14
+  oldTaskDays: 14,
+  warpTabs: DEFAULT_WARP_TABS
 };
 
 export function getRepoRoot(cwd = process.cwd()): string {
@@ -62,7 +70,8 @@ export function normalizeConfig(input: unknown): AitConfig {
     tasksDir: String(merged.tasksDir || DEFAULT_CONFIG.tasksDir).trim(),
     baseRef: String(merged.baseRef || DEFAULT_CONFIG.baseRef).trim(),
     baseFolder: String(merged.baseFolder || DEFAULT_CONFIG.baseFolder).trim(),
-    oldTaskDays
+    oldTaskDays,
+    warpTabs: parseWarpTabs(merged.warpTabs)
   };
 
   if (!config.taskPrefix) {
@@ -82,6 +91,66 @@ export function normalizeConfig(input: unknown): AitConfig {
   }
 
   return config;
+}
+
+function parseWarpTabs(value: unknown): WarpTabConfig[] {
+  if (value == null) {
+    return DEFAULT_WARP_TABS.map((tab) => ({ ...tab }));
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("Config `warpTabs` must be an array of tab definitions.");
+  }
+  if (value.length === 0) {
+    throw new Error("Config `warpTabs` must define at least one tab.");
+  }
+
+  return value.map((entry, index) => parseWarpTab(entry, index));
+}
+
+function parseWarpTab(entry: unknown, index: number): WarpTabConfig {
+  const label = `warpTabs[${index}]`;
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+    throw new Error(`Config \`${label}\` must be an object.`);
+  }
+
+  const record = entry as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  if (!title) {
+    throw new Error(`Config \`${label}.title\` must be a non-empty string.`);
+  }
+
+  const rawPath = typeof record.path === "string" ? record.path.trim() : "";
+  if (!rawPath) {
+    throw new Error(`Config \`${label}.path\` must be a non-empty string (use "." for the task root).`);
+  }
+  if (path.isAbsolute(rawPath) || rawPath.startsWith("~")) {
+    throw new Error(`Config \`${label}.path\` must be relative to the task folder: ${rawPath}`);
+  }
+  const normalizedPath = path.normalize(rawPath);
+  if (normalizedPath === ".." || normalizedPath.startsWith(`..${path.sep}`)) {
+    throw new Error(`Config \`${label}.path\` must stay inside the task folder: ${rawPath}`);
+  }
+
+  const tab: WarpTabConfig = { title, path: normalizedPath };
+
+  if (record.color != null && record.color !== "") {
+    const color = String(record.color).trim().toLowerCase();
+    if (!WARP_COLORS.includes(color as WarpColor)) {
+      throw new Error(
+        `Config \`${label}.color\` must be one of: ${WARP_COLORS.join(", ")} (Warp only supports these tab colors).`
+      );
+    }
+    tab.color = color as WarpColor;
+  }
+
+  if (record.command != null && record.command !== "") {
+    if (typeof record.command !== "string") {
+      throw new Error(`Config \`${label}.command\` must be a string.`);
+    }
+    tab.command = record.command.trim();
+  }
+
+  return tab;
 }
 
 function parsePositiveInt(value: unknown, fieldName: string): number {

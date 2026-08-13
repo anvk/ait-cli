@@ -70,10 +70,12 @@ program
 
 program
   .command("create")
-  .description("Create a task worktree and open it in Cursor")
+  .description("Create a task worktree and open it in Warp")
   .argument("<taskId>", "Task identifier, e.g. 1437")
-  .option("--no-open", "Do not open Cursor after creation")
-  .action((taskId: string, options: { open: boolean }) => {
+  .option("--no-open", "Do not open Warp after creation")
+  .option("--close-current-tab", "Close the Warp tab this command was run from")
+  .option("--new-window", "Open the tabs in a new Warp window")
+  .action((taskId: string, options: { open: boolean; closeCurrentTab?: boolean; newWindow?: boolean }) => {
     runCreateCommand(taskId, options, program.opts<GlobalOptions>().repo)
   })
 
@@ -81,13 +83,15 @@ program
   .command("task")
   .description("Open task if it exists, otherwise create and open it")
   .argument("<taskId>", "Task identifier, e.g. 1437")
-  .action((taskId: string) => {
-    runTaskCommand(taskId, program.opts<GlobalOptions>().repo)
+  .option("--close-current-tab", "Close the Warp tab this command was run from")
+  .option("--new-window", "Open the tabs in a new Warp window")
+  .action((taskId: string, options: { closeCurrentTab?: boolean; newWindow?: boolean }) => {
+    runTaskCommand(taskId, options, program.opts<GlobalOptions>().repo)
   })
 
 program
   .command("open")
-  .description("Open an existing task folder in Cursor")
+  .description("Open an existing task folder in Warp")
   .argument("<taskId>", "Task identifier, e.g. 1437")
   .action((taskId: string) => {
     runOpenCommand(taskId, program.opts<GlobalOptions>().repo)

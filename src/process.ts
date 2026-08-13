@@ -62,3 +62,8 @@ export function commandExists(command: string): boolean {
   const result = spawnSync(command, ["--version"], { stdio: "ignore" });
   return result.status === 0;
 }
+
+export function commandSucceeds(command: string, args: string[]): boolean {
+  const result = spawnSync(command, args, { stdio: "ignore" });
+  return result.status === 0;
+}

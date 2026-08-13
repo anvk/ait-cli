@@ -5,7 +5,13 @@ import { stdin as input, stdout as output } from "node:process";
 import pc from "picocolors";
 import { getRepoRoot, readConfig } from "./config.js";
 import { interactiveInit } from "./init.js";
-import { openInCursor } from "./editor.js";
+import {
+  closeCurrentWarpTab,
+  getTabConfigsDir,
+  isWarpInstalled,
+  openTaskInWarp,
+  removeTabConfigs
+} from "./warp.js";
 import {
   createOrAttachWorktree,
   deleteLocalBranch,
@@ -41,14 +47,26 @@ function findUp(startDir: string, fileName: string): string | null {
 function resolveConfiguredRepoRoot(repoOption?: string): string {
   const startDir = repoOption ? path.resolve(repoOption) : process.cwd();
   const configPath = findUp(startDir, ".ait.json");
-  if (!configPath) {
-    throw new Error(
-      `Directory is not configured for AIT tasks: ${startDir}\nMissing .ait.json. Run \`ait init\` in your repository root.`
-    );
+  if (configPath) {
+    return fs.realpathSync.native(path.dirname(configPath));
   }
 
-  const configDir = path.dirname(configPath);
-  return fs.realpathSync.native(configDir);
+  // Only consulted outside a configured workspace, so an exported AIT_REPO cannot
+  // hijack commands run inside a different one.
+  const fallbackRepo = repoOption ? undefined : process.env.AIT_REPO?.trim();
+  if (fallbackRepo) {
+    const fallbackConfigPath = findUp(path.resolve(fallbackRepo), ".ait.json");
+    if (!fallbackConfigPath) {
+      throw new Error(
+        `AIT_REPO does not point at a configured workspace: ${fallbackRepo}\nMissing .ait.json. Run \`ait init\` there.`
+      );
+    }
+    return fs.realpathSync.native(path.dirname(fallbackConfigPath));
+  }
+
+  throw new Error(
+    `Directory is not configured for AIT tasks: ${startDir}\nMissing .ait.json. Run \`ait init\` in your repository root, or set AIT_REPO to a configured workspace.`
+  );
 }
 
 function resolveBaseRepoRoot(configDir: string, baseFolder: string): string {
@@ -224,9 +242,25 @@ export async function runInitCommand(repoOption?: string): Promise<void> {
   const targetDir = path.resolve(repoOption || process.cwd());
   const configPath = await interactiveInit(targetDir);
   console.log(pc.green(`Created config: ${configPath}`));
+  console.log("");
+  console.log("To run ait from any directory, run:");
+  console.log(pc.cyan(`  ${exportAitRepoCommand(path.dirname(configPath))}`));
 }
 
-export function runCreateCommand(taskId: string, options: { open: boolean }, repoOption?: string): void {
+// macOS defaults to zsh; bash keeps login shells in .bash_profile.
+function shellProfilePath(): string {
+  return (process.env.SHELL ?? "").endsWith("/bash") ? "~/.bash_profile" : "~/.zshrc";
+}
+
+function exportAitRepoCommand(configDir: string): string {
+  return `echo 'export AIT_REPO=${configDir}' >> ${shellProfilePath()}`;
+}
+
+export function runCreateCommand(
+  taskId: string,
+  options: { open: boolean; closeCurrentTab?: boolean; newWindow?: boolean },
+  repoOption?: string
+): void {
   const configDir = resolveConfiguredRepoRoot(repoOption);
   const config = readConfig(configDir);
   const baseFolderPath = path.resolve(configDir, config.baseFolder);
@@ -251,15 +285,23 @@ export function runCreateCommand(taskId: string, options: { open: boolean }, rep
     branchName,
     baseRef: config.baseRef
   });
+  console.log(pc.cyan(`Copying ${config.baseFolder} into ${taskName} (this can take a while)...`));
   syncBaseFolderIntoTask(baseFolderPath, taskPath);
   console.log(pc.green(`Created: ${taskPath}`));
 
   if (options.open) {
-    openInCursor(taskPath);
+    openTaskInWarp(taskPath, taskName, config.warpTabs, { newWindow: options.newWindow });
+    if (options.closeCurrentTab) {
+      closeCurrentWarpTab();
+    }
   }
 }
 
-export function runTaskCommand(taskId: string, repoOption?: string): void {
+export function runTaskCommand(
+  taskId: string,
+  options: { closeCurrentTab?: boolean; newWindow?: boolean },
+  repoOption?: string
+): void {
   const configDir = resolveConfiguredRepoRoot(repoOption);
   const config = readConfig(configDir);
   const baseFolderPath = path.resolve(configDir, config.baseFolder);
@@ -270,7 +312,10 @@ export function runTaskCommand(taskId: string, repoOption?: string): void {
   const taskPath = getTaskPath(configDir, config.tasksDir, taskName);
 
   if (fs.existsSync(taskPath)) {
-    openInCursor(taskPath);
+    openTaskInWarp(taskPath, taskName, config.warpTabs, { newWindow: options.newWindow });
+    if (options.closeCurrentTab) {
+      closeCurrentWarpTab();
+    }
     return;
   }
 
@@ -285,9 +330,13 @@ export function runTaskCommand(taskId: string, repoOption?: string): void {
     branchName,
     baseRef: config.baseRef
   });
+  console.log(pc.cyan(`Copying ${config.baseFolder} into ${taskName} (this can take a while)...`));
   syncBaseFolderIntoTask(baseFolderPath, taskPath);
   console.log(pc.green(`Created: ${taskPath}`));
-  openInCursor(taskPath);
+  openTaskInWarp(taskPath, taskName, config.warpTabs, { newWindow: options.newWindow });
+  if (options.closeCurrentTab) {
+    closeCurrentWarpTab();
+  }
 }
 
 export function runOpenCommand(taskId: string, repoOption?: string): void {
@@ -300,7 +349,7 @@ export function runOpenCommand(taskId: string, repoOption?: string): void {
     throw new Error(`Task folder does not exist: ${taskPath}`);
   }
 
-  openInCursor(taskPath);
+  openTaskInWarp(taskPath, taskName, config.warpTabs);
 }
 
 export async function runRemoveCommand(taskId: string, repoOption?: string): Promise<void> {
@@ -318,6 +367,7 @@ export async function runRemoveCommand(taskId: string, repoOption?: string): Pro
 
   removeWorktree(baseRepoRoot, taskPath, { force: true });
   maybeDeleteTaskBranch(baseRepoRoot, `${config.branchPrefix}${taskName}`);
+  removeTabConfigs(taskName);
   console.log(pc.green(`Removed task: ${taskPath}`));
 }
 
@@ -368,6 +418,7 @@ export async function runPurgeCommand(options: { days?: string }, repoOption?: s
     try {
       removeWorktree(baseRepoRoot, candidate.taskPath, { force: true });
       maybeDeleteTaskBranch(baseRepoRoot, `${config.branchPrefix}${candidate.taskName}`);
+      removeTabConfigs(candidate.taskName);
       removedCount += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -404,6 +455,15 @@ export function runDiagnosticsCommand(repoOption?: string): void {
     const configDir = resolveConfiguredRepoRoot(repoOption);
     ok(`AIT config directory: ${configDir}`);
 
+    const envRepo = process.env.AIT_REPO?.trim();
+    if (envRepo) {
+      ok(`AIT_REPO is set: ${envRepo}`);
+    } else {
+      warn(
+        `AIT_REPO is not set, so ait only works inside ${configDir} and its subfolders. To fix, run:\n     ${exportAitRepoCommand(configDir)}`
+      );
+    }
+
     const config = readConfig(configDir);
     ok("Config loaded from .ait.json");
     ok(`Task prefix: ${config.taskPrefix}`);
@@ -436,10 +496,28 @@ export function runDiagnosticsCommand(repoOption?: string): void {
       warn(`Base ref not currently resolvable locally: ${config.baseRef} (try 'git fetch origin')`);
     }
 
-    if (commandExists("cursor")) {
-      ok("Cursor CLI is available");
+    if (isWarpInstalled()) {
+      ok("Warp is installed");
     } else {
-      failCheck("Cursor CLI is missing from PATH");
+      failCheck("Warp is not installed (get it from https://www.warp.dev)");
+    }
+
+    const tabConfigsDir = getTabConfigsDir();
+    try {
+      fs.mkdirSync(tabConfigsDir, { recursive: true });
+      fs.accessSync(tabConfigsDir, fs.constants.W_OK);
+      ok(`Warp tab configs directory is writable: ${tabConfigsDir}`);
+    } catch {
+      failCheck(`Warp tab configs directory is not writable: ${tabConfigsDir}`);
+    }
+
+    for (const tab of config.warpTabs) {
+      const colorLabel = tab.color ?? "no color";
+      const pathLabel = tab.path === "." ? "<task>" : `<task>/${tab.path}`;
+      ok(`Warp tab '${tab.title}' -> ${pathLabel} (${colorLabel})`);
+      if (tab.command && !commandExists(tab.command)) {
+        warn(`Warp tab '${tab.title}' runs '${tab.command}', which is missing from PATH`);
+      }
     }
   } catch (error) {
     failCheck(error instanceof Error ? error.message : String(error));

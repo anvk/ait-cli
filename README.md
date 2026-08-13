@@ -9,7 +9,7 @@ It is designed for workflows where you keep one configurable "base" repo (for ex
 - Initializes per-directory config with `.ait.json`
 - Creates task worktrees from a configured base git ref (default `origin/main`)
 - Mirrors local `baseFolder` contents into new task folders (including dotfiles, excluding `.git`)
-- Opens existing task folders in Cursor
+- Opens task folders as a color-coded, multi-tab Warp workspace
 - Supports smart open-or-create with a single command
 - Lists, removes, and purges old task folders safely (with typed confirmation)
 - Runs diagnostics via `doctor`
@@ -78,7 +78,13 @@ Example:
   "tasksDir": "tasks",
   "baseRef": "origin/main",
   "baseFolder": "myproject",
-  "oldTaskDays": 14
+  "oldTaskDays": 14,
+  "warpTabs": [
+    { "title": "API", "path": "go", "color": "red" },
+    { "title": "UI", "path": "ui", "color": "blue" },
+    { "title": "CLI", "path": "." },
+    { "title": "Claude", "path": ".", "color": "yellow", "command": "claude" }
+  ]
 }
 ```
 
@@ -90,6 +96,29 @@ Field meanings:
 - `baseRef`: git ref used for creating new task branches/worktrees
 - `baseFolder`: folder (relative to config dir) that points to the base git repository
 - `oldTaskDays`: threshold used by `ait tasks`/`ait list` to split recent vs old tasks, and default threshold for `ait purge`
+- `warpTabs`: the Warp tabs opened for a task (see below)
+
+## Warp workspace
+
+Opening a task adds one tab per `warpTabs` entry to Warp's active window, starting Warp first if it is not running.
+Each pane is named `<title> - <taskName>`, for example `API - AIT-1437`.
+
+Per-tab fields:
+
+- `title`: pane name prefix
+- `path`: folder to open, relative to the task folder (`.` is the task root). A missing folder falls back to the task root with a warning.
+- `color`: optional tab color. Warp supports only `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`. Omit for no color.
+- `command`: optional command run when the tab opens (for example `claude`)
+
+Opening the same task again adds another set of tabs rather than focusing the existing ones, since Warp cannot reuse tabs that are already open.
+
+`ait create`/`ait task` accept two flags:
+
+- `--new-window`: open the tabs in a new Warp window instead of the active one
+- `--close-current-tab`: close the tab you ran the command from once the new tabs are open. It signals that tab's shell to exit, so anything still running there stops, and is ignored outside Warp and when combined with `--no-open`.
+
+Tabs are written as configs to `~/.warp/tab_configs/ait-<taskName>-*.toml` and removed by `ait remove`/`ait purge`.
+A command that sets its own terminal title (such as `claude`) overrides the pane name.
 
 ## Common command usage
 
@@ -97,17 +126,22 @@ Field meanings:
 
 ```bash
 ait task 1437
+ait task 1437 --new-window
+ait task 1437 --new-window --close-current-tab
 ```
 
 - If `tasks/AIT-1437` exists, it opens it.
 - If it does not exist, it fetches/rebases the base repository onto `baseRef`, creates it from `baseRef`, and opens it.
 - New branches are named `${branchPrefix}${taskName}` (for example `alex/AIT-1437`).
 
+Creating a task copies `baseFolder` into the new task folder, which can take a while on large repositories.
+
 ### Create only
 
 ```bash
 ait create 1437
 ait create 1437 --no-open
+ait create 1437 --new-window
 ```
 
 ### Open existing
@@ -153,7 +187,7 @@ ait status
 ```
 
 `status` is an alias for `doctor`.
-Checks config validity, base folder/repo, base ref, and Cursor CLI availability.
+Checks config validity, base folder/repo, base ref, Warp availability, and each configured Warp tab.
 
 ### Version/help
 
@@ -165,20 +199,28 @@ ait help
 
 ## Running from another directory
 
-You can target a specific config/workspace directory with:
+`ait` normally finds `.ait.json` by searching the current directory and its parents, so it works anywhere inside a workspace.
+
+To run it from anywhere else, set a default workspace in your shell profile:
 
 ```bash
-ait --repo /path/to/workspace <command>
+echo 'export AIT_REPO=/path/to/workspace' >> ~/.zshrc
 ```
 
-Example:
+`ait init` and `ait doctor` both print this command with your workspace path filled in.
+
+`AIT_REPO` is only used when the current directory is not inside a workspace, so it never overrides the workspace you are standing in.
+
+To target one specific workspace for a single command:
 
 ```bash
 ait --repo /path/to/workspace doctor
 ```
 
+`--repo` wins over `AIT_REPO`.
+
 ## Notes
 
-- `ait` expects `cursor` CLI to be installed and available in `PATH`.
+- `ait` expects Warp to be installed (macOS), and any tab `command` to be in `PATH`.
 - `create` fails if a target task folder already exists (use `open` or `task`).
 - `remove` and `purge` are intentionally guarded by typed confirmations.
