@@ -204,9 +204,10 @@ ait help
 To run it from anywhere else, set a default workspace in your shell profile:
 
 ```bash
-echo 'export AIT_REPO=/path/to/workspace' >> ~/.zshrc
+echo 'export AIT_REPO=/path/to/workspace' >> ~/.zshrc && export AIT_REPO=/path/to/workspace
 ```
 
+The second half applies it to the shell you are in; the profile is only read by shells started afterwards.
 `ait init` and `ait doctor` both print this command with your workspace path filled in.
 
 `AIT_REPO` is only used when the current directory is not inside a workspace, so it never overrides the workspace you are standing in.

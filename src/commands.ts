@@ -252,8 +252,11 @@ function shellProfilePath(): string {
   return (process.env.SHELL ?? "").endsWith("/bash") ? "~/.bash_profile" : "~/.zshrc";
 }
 
+// Appending alone leaves the current shell without the variable, since the profile is
+// only read at shell startup, so the same command exports it here too.
 function exportAitRepoCommand(configDir: string): string {
-  return `echo 'export AIT_REPO=${configDir}' >> ${shellProfilePath()}`;
+  const line = `export AIT_REPO=${configDir}`;
+  return `echo '${line}' >> ${shellProfilePath()} && ${line}`;
 }
 
 export function runCreateCommand(
