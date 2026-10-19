@@ -1,7 +1,7 @@
 {
   "name": "lane-cli",
   "version": "0.2.0",
-  "description": "Global CLI for repo task worktrees",
+  "description": "Run coding agents side by side, each task in its own git worktree",
   "type": "module",
   "bin": {
     "lane": "./dist/bin/lane.js"

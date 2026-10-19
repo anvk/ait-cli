@@ -1,12 +1,12 @@
 # lane
 
-**Work on several Claude sessions at once, each in its own lane.** `lane` is a small, fast command-line tool for
-running one to N Claude Code sessions in parallel, across one project or many, without them stepping on each other's
-files or branches.
+**Work on several AI coding sessions at once, each in its own lane.** `lane` is a small, fast command-line tool for
+running one to N coding agents in parallel, across one project or many, without them stepping on each other's files or
+branches. It works with any agent that has a command line: you decide what runs for each task.
 
 Every task gets its own git worktree on its own branch. `lane 1437` creates `tasks/api/LANE-1437`, clones in the
-base's `node_modules` and env files so it is ready to run straight away, and opens your setup for it: by default a
-`Claude` tab and a `Terminal` tab in Warp, or anything else with a command line, such as `cursor .` or a tmux window.
+base's `node_modules` and env files so it is ready to run straight away, and opens your setup for it: an agent in one
+Warp tab and a terminal in another, an editor such as `cursor .`, a tmux window, or anything else with a command line.
 Run `lane` to jump between tasks, and `lane remove 1437` to clean one up when it is merged.
 
 ## Quick start
@@ -29,6 +29,9 @@ lane init
 When `lane init` asks which command lists to load, press Enter to take `default`: every task opens as two Warp tabs,
 `Claude` and `Terminal`. That is all. Run `lane 1437` to start a task, or `lane` to pick one. The sections below
 explain each step, how updates work, and every command.
+
+To use a different agent, change the tab's command in `.lane.json`, for example
+`"lane warp tab Agent --color yellow --command 'codex'"`. Any program you can start from a terminal works.
 
 ## Install
 
