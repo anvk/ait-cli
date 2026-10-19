@@ -1,21 +1,21 @@
-// Runs a base's command lists for a task.
+// Runs a base's command lists for a lane.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import pc from "picocolors";
-import { ENV } from "lane-plugin-api";
+import { ENV } from "lanes-plugin-api";
 import { runInteractive } from "../core/process.js";
 import { errorMessage } from "../core/util.js";
 import { shellJoin, shellQuote, shellSplit } from "./shell.js";
-import type { TaskContext } from "../plugins/types.js";
+import type { LaneContext } from "../plugins/types.js";
 
-// The task as LANE_* variables; the names are the plugin API's, so plugins and lane agree.
-export function taskEnv(ctx: TaskContext): NodeJS.ProcessEnv {
+// The lane as LANES_* variables; the names are the plugin API's, so plugins and lanes agree.
+export function laneEnv(ctx: LaneContext): NodeJS.ProcessEnv {
   return {
-    [ENV.task]: ctx.taskName,
-    [ENV.taskPath]: ctx.taskPath,
-    [ENV.taskKey]: ctx.key,
-    [ENV.taskLabel]: ctx.label,
+    [ENV.lane]: ctx.laneName,
+    [ENV.lanePath]: ctx.lanePath,
+    [ENV.laneKey]: ctx.key,
+    [ENV.laneLabel]: ctx.label,
     [ENV.branch]: ctx.branch,
     [ENV.base]: ctx.base,
     [ENV.root]: ctx.root,
@@ -23,30 +23,30 @@ export function taskEnv(ctx: TaskContext): NodeJS.ProcessEnv {
   };
 }
 
-const PLACEHOLDERS: Record<string, (ctx: TaskContext) => string> = {
-  task: (ctx) => ctx.taskName,
-  path: (ctx) => ctx.taskPath,
+const PLACEHOLDERS: Record<string, (ctx: LaneContext) => string> = {
+  lane: (ctx) => ctx.laneName,
+  path: (ctx) => ctx.lanePath,
   branch: (ctx) => ctx.branch,
   base: (ctx) => ctx.base,
   root: (ctx) => ctx.root
 };
 
-// `{task}` and friends become shell-quoted values. A line that starts with `lane` runs
-// this same lane, so a config works when `lane` is not on PATH (and under tests).
-export function substitute(line: string, ctx: TaskContext): string {
-  const expanded = line.replace(/\{(task|path|branch|base|root)\}/g, (_match, name: string) =>
+// `{lane}` and friends become shell-quoted values. A line that starts with `lanes` runs
+// this same lanes, so a config works when `lanes` is not on PATH (and under tests).
+export function substitute(line: string, ctx: LaneContext): string {
+  const expanded = line.replace(/\{(lane|path|branch|base|root)\}/g, (_match, name: string) =>
     shellQuote(PLACEHOLDERS[name](ctx))
   );
-  return isLaneLine(expanded) ? `${selfCommand()} ${expanded.trimStart().slice("lane".length)}` : expanded;
+  return isLanesLine(expanded) ? `${selfCommand()} ${expanded.trimStart().slice("lanes".length)}` : expanded;
 }
 
-export function isLaneLine(line: string): boolean {
-  return /^\s*lane(\s|$)/.test(line);
+export function isLanesLine(line: string): boolean {
+  return /^\s*lanes(\s|$)/.test(line);
 }
 
-// The words after `lane` in a line that invokes lane, or null for any other command.
-export function laneWords(line: string): string[] | null {
-  if (!isLaneLine(line)) {
+// The words after `lanes` in a line that invokes lanes, or null for any other command.
+export function lanesWords(line: string): string[] | null {
+  if (!isLanesLine(line)) {
     return null;
   }
   return shellSplit(line).slice(1);
@@ -66,17 +66,17 @@ export interface RunListOptions {
   failureNote?: string;
 }
 
-// Runs each line with `sh -c` in the task folder, in order, with the terminal attached.
+// Runs each line with `sh -c` in the lane folder, in order, with the terminal attached.
 // A failing line is reported and the rest still run. Then every `*.flush` left in the
 // after-directory runs once.
-export function runList(ctx: TaskContext, lines: string[], options: RunListOptions = {}): void {
+export function runList(ctx: LaneContext, lines: string[], options: RunListOptions = {}): void {
   if (lines.length === 0) {
     return;
   }
-  const afterDir = options.after ? fs.mkdtempSync(path.join(os.tmpdir(), "lane-after-")) : undefined;
+  const afterDir = options.after ? fs.mkdtempSync(path.join(os.tmpdir(), "lanes-after-")) : undefined;
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    ...taskEnv(ctx),
+    ...laneEnv(ctx),
     ...(afterDir ? { [ENV.afterDir]: afterDir } : {}),
     ...(options.runSetup ? { [ENV.runSetup]: "1" } : {})
   };
@@ -100,9 +100,9 @@ export function runList(ctx: TaskContext, lines: string[], options: RunListOptio
   }
 }
 
-function runLine(line: string, ctx: TaskContext, env: NodeJS.ProcessEnv, failureNote?: string): void {
+function runLine(line: string, ctx: LaneContext, env: NodeJS.ProcessEnv, failureNote?: string): void {
   try {
-    runInteractive("sh", ["-c", substitute(line, ctx)], { cwd: ctx.taskPath, env });
+    runInteractive("sh", ["-c", substitute(line, ctx)], { cwd: ctx.lanePath, env });
   } catch (error) {
     const note = failureNote ? ` (${failureNote})` : "";
     console.log(pc.yellow(`Command failed${note}: ${line}\n  ${errorMessage(error).split("\n").pop()}`));

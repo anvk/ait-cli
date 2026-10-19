@@ -1,25 +1,25 @@
 {
-  "name": "lane-cli",
+  "name": "lanes-cli",
   "version": "0.2.0",
-  "description": "Global CLI for repo task worktrees",
+  "description": "Run coding agents side by side, each lane in its own git worktree",
   "type": "module",
   "bin": {
-    "lane": "./dist/bin/lane.js"
+    "lanes": "./dist/bin/lanes.js"
   },
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node tools/build-clonedir.mjs && node tools/build-bin-mode.mjs",
-    "start": "node ./dist/bin/lane.js",
-    "dev": "tsx ./src/bin/lane.ts",
+    "start": "node ./dist/bin/lanes.js",
+    "dev": "tsx ./src/bin/lanes.ts",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "prepare": "npm run build"
   },
   "dependencies": {
     "commander": "^12.1.0",
     "picocolors": "^1.1.1",
-    "lane-plugin-api": "file:../plugins/api"
+    "lanes-plugin-api": "file:../plugins/api"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

@@ -2,7 +2,7 @@
 // safe to update it in place.
 //
 // Everything the startup path needs is read straight off the filesystem — no git
-// subprocesses — because lane starts in about 0.05s and five spawns would double that.
+// subprocesses — because lanes starts in about 0.05s and five spawns would double that.
 // Shelling out to git is reserved for the display strings and the guards, which only run
 // once there is actually an update waiting.
 import fs from "node:fs";
@@ -29,7 +29,7 @@ export interface InstallInfo extends InstallPaths {
 }
 
 export const MAIN_BRANCH = "main";
-export const CHILD_ENV = "LANE_SELF_UPDATE_CHILD";
+export const CHILD_ENV = "LANES_SELF_UPDATE_CHILD";
 
 function git(cwd: string, args: string[]): string | null {
   const result = runAllowFailure("git", args, { cwd, timeout: 10_000 });
@@ -70,7 +70,7 @@ export function resolveInstallPaths(): InstallPaths {
   const packageRoot = findDirUp(here, "package.json") ?? path.resolve(here, "../..");
   const gitRoot = findDirUp(packageRoot, ".git");
   const marker = readInstallMarker().installDir;
-  const expected = marker ?? path.join(os.homedir(), ".lane-cli", "cli");
+  const expected = marker ?? path.join(os.homedir(), ".lanes-cli", "cli");
 
   let managed = false;
   try {
@@ -83,7 +83,7 @@ export function resolveInstallPaths(): InstallPaths {
   return {
     packageRoot,
     gitRoot,
-    distEntry: path.join(packageRoot, "dist", "bin", "lane.js"),
+    distEntry: path.join(packageRoot, "dist", "bin", "lanes.js"),
     checkEntry: path.join(packageRoot, "dist", "selfupdate", "check.js"),
     managed,
     branch: head.branch,
@@ -120,13 +120,13 @@ export function describeVersion(info: InstallInfo): string {
   return packageVersion(info.packageRoot);
 }
 
-const SKIP_COMMANDS = new Set(["update", "upgrade", "version", "doctor", "status", "help"]);
+const SKIP_COMMANDS = new Set(["update", "version", "doctor", "status", "help"]);
 
-// Settings that rule out updating, even when asked for with `lane update`.
+// Settings that rule out updating, even when asked for with `lanes update`.
 export function settingBlockers(): string[] {
   const blockers: string[] = [];
-  if (process.env.LANE_NO_AUTO_UPDATE) {
-    blockers.push("LANE_NO_AUTO_UPDATE is set");
+  if (process.env.LANES_NO_AUTO_UPDATE) {
+    blockers.push("LANES_NO_AUTO_UPDATE is set");
   }
   if (process.env[CHILD_ENV]) {
     blockers.push("already running as the re-executed child");

@@ -1,7 +1,7 @@
 {
-  "name": "lane-plugin-api",
+  "name": "lanes-plugin-api",
   "version": "1.0.0",
-  "description": "The interface a lane plugin implements, and the environment lane gives a task's commands",
+  "description": "The interface a lanes plugin implements, and the environment lanes gives a lane's commands",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",

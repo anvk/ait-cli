@@ -1,4 +1,4 @@
-// Creating, checking out, opening and deleting a single task.
+// Creating, checking out, opening and deleting a single lane.
 import fs from "node:fs";
 import path from "node:path";
 import { stdin as input } from "node:process";
@@ -18,61 +18,61 @@ import {
   rebaseCurrentBranchOnto,
   removeWorktree
 } from "./git.js";
-import { ensureTasksDir, getTaskPath, listTaskFolders, syncBaseFolderIntoTask, toTaskName } from "./tasks.js";
-import type { BaseConfig, LaneConfig } from "./types.js";
+import { ensureLanesDir, getLanePath, listLaneFolders, syncBaseFolderIntoLane, toLaneName } from "./lanes.js";
+import type { BaseConfig, LanesConfig } from "./types.js";
 import { ask, realpathOrSelf } from "./util.js";
-import { closeCurrentTab, forgetTask, setupCommandsOf } from "../plugins/registry.js";
+import { closeCurrentTab, forgetLane, setupCommandsOf } from "../plugins/registry.js";
 import { runList } from "../hooks/run.js";
-import type { TaskContext } from "../plugins/types.js";
-import { locateInBase, resolveBaseRepoRoot, taskIdentity, type TaskLocation } from "./workspace.js";
+import type { LaneContext } from "../plugins/types.js";
+import { locateInBase, resolveBaseRepoRoot, laneIdentity, type LaneLocation } from "./workspace.js";
 
 export interface OpenOptions {
   closeCurrentTab?: boolean;
 }
 
-// Create the task even though the base still holds work of its own.
+// Create the lane even though the base still holds work of its own.
 export interface ForceOption {
   force?: boolean;
 }
 
-// The task as the command lines see it.
-function taskContext(configDir: string, config: LaneConfig, location: TaskLocation, created: boolean): TaskContext {
-  const { key, label } = taskIdentity(config, location.base, location.taskName);
+// The lane as the command lines see it.
+function laneContext(configDir: string, config: LanesConfig, location: LaneLocation, created: boolean): LaneContext {
+  const { key, label } = laneIdentity(config, location.base, location.laneName);
   return {
-    taskName: location.taskName,
-    taskPath: location.taskPath,
+    laneName: location.laneName,
+    lanePath: location.lanePath,
     key,
     label,
-    branch: taskBranch(config, location),
+    branch: laneBranch(config, location),
     base: location.base.name,
     root: configDir,
     created
   };
 }
 
-// Runs the base's `open` list for the task; right after creating it, and when the setup
+// Runs the base's `open` list for the lane; right after creating it, and when the setup
 // prompt was accepted, the `create` list runs first so what it sets up is there when the
 // open commands start.
-export function openTask(
+export function openLane(
   configDir: string,
-  config: LaneConfig,
-  location: TaskLocation,
+  config: LanesConfig,
+  location: LaneLocation,
   options: OpenOptions & { created?: boolean; runSetup?: boolean }
 ): void {
   const commands = resolveBaseCommands(config, location.base);
-  const ctx = taskContext(configDir, config, location, Boolean(options.created));
+  const ctx = laneContext(configDir, config, location, Boolean(options.created));
   if (options.runSetup) {
     runList(ctx, commands.create, { announce: true });
   }
   runList(ctx, commands.open, { after: true, runSetup: options.runSetup });
   if (options.closeCurrentTab && !closeCurrentTab()) {
-    console.log(pc.yellow("Not running inside a terminal lane can close; leaving the current tab open."));
+    console.log(pc.yellow("Not running inside a terminal lanes can close; leaving the current tab open."));
   }
 }
 
-// The branch lane creates for a new task.
-function taskBranchName(config: LaneConfig, base: BaseConfig, taskName: string): string {
-  return `${resolveBranchPrefix(config, base)}${taskName}`;
+// The branch lanes creates for a new lane.
+function laneBranchName(config: LanesConfig, base: BaseConfig, laneName: string): string {
+  return `${resolveBranchPrefix(config, base)}${laneName}`;
 }
 
 // Long file lists in the not-clean report are cut off; the point is to name the base,
@@ -92,7 +92,7 @@ function describeDirtyItems(label: string, items: string[]): string[] {
   ];
 }
 
-// A task branches from `base.ref` and then has the base's ignored content copied over
+// A lane branches from `base.ref` and then has the base's ignored content copied over
 // it, so edits and commits living only in the base would be silently lost (they are not
 // on the new branch). Creation stops instead. Untracked files do not count: the copy
 // leaves them in the base, which is where a stray file belongs. A base that is merely
@@ -109,36 +109,36 @@ function assertBaseIsClean(base: BaseConfig, baseRepoRoot: string, options: Forc
 
   throw new Error(
     [
-      `Base '${base.name}' (${base.folder}) is not clean, so no task was created.`,
+      `Base '${base.name}' (${base.folder}) is not clean, so no lane was created.`,
       ...describeDirtyItems("staged, uncommitted", state.staged),
       ...describeDirtyItems("modified, uncommitted", state.unstaged),
       ...describeDirtyItems(`commits not on ${base.ref}`, state.localCommits),
       "",
       `Commit, stash or push this work in ${base.folder}, then run the command again.`,
-      "Pass --force to create the task from the base anyway."
+      "Pass --force to create the lane from the base anyway."
     ].join("\n")
   );
 }
 
-// The last step of making a task: bring over what the new worktree lacks from the base.
-function copyBaseIntoTask(configDir: string, location: TaskLocation): void {
-  const { base, taskName, taskPath } = location;
-  console.log(pc.cyan(`Copying ${base.folder} into ${taskName}...`));
-  const sync = syncBaseFolderIntoTask(path.resolve(configDir, base.folder), taskPath);
+// The last step of making a lane: bring over what the new worktree lacks from the base.
+function copyBaseIntoLane(configDir: string, location: LaneLocation): void {
+  const { base, laneName, lanePath } = location;
+  console.log(pc.cyan(`Copying ${base.folder} into ${laneName}...`));
+  const sync = syncBaseFolderIntoLane(path.resolve(configDir, base.folder), lanePath);
   console.log(pc.dim(`  ${sync.entries} path(s) ${sync.strategy === "clone" ? "cloned" : "copied"}`));
   if (sync.left > 0) {
     console.log(pc.dim(`  ${sync.left} untracked path(s) left in ${base.folder}, not copied`));
   }
-  console.log(pc.green(`Created: ${taskPath}`));
+  console.log(pc.green(`Created: ${lanePath}`));
 }
 
-export function createTaskFolder(
+export function createLaneFolder(
   configDir: string,
-  config: LaneConfig,
-  location: TaskLocation,
+  config: LanesConfig,
+  location: LaneLocation,
   options: ForceOption = {}
 ): void {
-  const { base, taskName, taskPath } = location;
+  const { base, laneName, lanePath } = location;
   const baseRepoRoot = resolveBaseRepoRoot(configDir, base);
 
   console.log(pc.cyan(`Fetching origin in ${base.folder}...`));
@@ -147,32 +147,32 @@ export function createTaskFolder(
   // `--autostash` cannot hide uncommitted changes by tucking them away and back.
   assertBaseIsClean(base, baseRepoRoot, options);
 
-  ensureTasksDir(configDir, base.tasksDir);
+  ensureLanesDir(configDir, base.lanesDir);
   console.log(pc.cyan(`Rebasing ${base.folder} onto ${base.ref}...`));
   rebaseCurrentBranchOnto(baseRepoRoot, base.ref);
-  console.log(pc.cyan(`Creating ${taskName} from ${base.ref}...`));
+  console.log(pc.cyan(`Creating ${laneName} from ${base.ref}...`));
   createOrAttachWorktree({
     repoRoot: baseRepoRoot,
-    taskPath,
-    branchName: taskBranchName(config, base, taskName),
+    lanePath,
+    branchName: laneBranchName(config, base, laneName),
     baseRef: base.ref
   });
-  copyBaseIntoTask(configDir, location);
+  copyBaseIntoLane(configDir, location);
 }
 
-// Task names a branch may take, preferred first. A branch lane made itself
-// (`<branchPrefix><taskName>`) maps back to that same task name. Any other branch is
-// named after its last `/` part (`someone/LANE-558-fix` → `LANE-558-fix`), then after the
-// whole branch should that name be taken (`LANE-someone-LANE-558-fix`). Characters a folder
-// name should not carry become `-`. The name always starts with the task prefix exactly,
-// since the task list matches it case-sensitively: a prefix in another case is respelled
-// (`lane-701` → `LANE-701`), and a missing one is added.
-export function taskNamesForBranch(config: LaneConfig, base: BaseConfig, branchName: string): string[] {
+// Lane names a branch may take, preferred first. A branch lanes made itself
+// (`<branchPrefix><laneName>`) maps back to that same lane name. Any other branch is
+// named after its last `/` part (`someone/ABC-558-fix` → `ABC-558-fix`), then after the
+// whole branch should that name be taken (`ABC-someone-ABC-558-fix`). Characters a folder
+// name should not carry become `-`. The name always starts with the lane prefix exactly,
+// since the lane list matches it case-sensitively: a prefix in another case is respelled
+// (`abc-701` → `ABC-701`), and a missing one is added.
+export function laneNamesForBranch(config: LanesConfig, base: BaseConfig, branchName: string): string[] {
   const toName = (raw: string): string => {
     const clean = raw.replace(/[^A-Za-z0-9._-]+/g, "-");
-    return clean.toLowerCase().startsWith(config.taskPrefix.toLowerCase())
-      ? `${config.taskPrefix}${clean.slice(config.taskPrefix.length)}`
-      : toTaskName(config.taskPrefix, clean);
+    return clean.toLowerCase().startsWith(config.lanePrefix.toLowerCase())
+      ? `${config.lanePrefix}${clean.slice(config.lanePrefix.length)}`
+      : toLaneName(config.lanePrefix, clean);
   };
   const branchPrefix = resolveBranchPrefix(config, base);
   if (branchPrefix && branchName.startsWith(branchPrefix)) {
@@ -183,8 +183,8 @@ export function taskNamesForBranch(config: LaneConfig, base: BaseConfig, branchN
 }
 
 export interface BranchHolder {
-  // The task holding the branch, when the worktree is one of this base's task folders.
-  taskName: string | null;
+  // The lane holding the branch, when the worktree is one of this base's lane folders.
+  laneName: string | null;
   // Its folder, relative to the workspace.
   folder: string;
 }
@@ -192,43 +192,43 @@ export interface BranchHolder {
 // Every worktree of a base that has a branch checked out, keyed by branch.
 export function describeBranchHolders(
   configDir: string,
-  config: LaneConfig,
+  config: LanesConfig,
   base: BaseConfig,
   baseRepoRoot: string
 ): Map<string, BranchHolder> {
-  const taskNamesByPath = new Map(
-    listTaskFolders(configDir, base.tasksDir, config.taskPrefix).map((taskName) => [
-      realpathOrSelf(getTaskPath(configDir, base.tasksDir, taskName)),
-      taskName
+  const laneNamesByPath = new Map(
+    listLaneFolders(configDir, base.lanesDir, config.lanePrefix).map((laneName) => [
+      realpathOrSelf(getLanePath(configDir, base.lanesDir, laneName)),
+      laneName
     ])
   );
   const holders = new Map<string, BranchHolder>();
   for (const [branchName, worktreePath] of listWorktreeBranches(baseRepoRoot)) {
     const realPath = realpathOrSelf(worktreePath);
     holders.set(branchName, {
-      taskName: taskNamesByPath.get(realPath) ?? null,
+      laneName: laneNamesByPath.get(realPath) ?? null,
       folder: path.relative(configDir, realPath) || "."
     });
   }
   return holders;
 }
 
-// Makes a task of an existing branch, or finds the task that already has it. Only that
-// one branch is fetched, and only when a task is about to be made of it.
-function checkoutBranchTask(
+// Makes a lane of an existing branch, or finds the lane that already has it. Only that
+// one branch is fetched, and only when a lane is about to be made of it.
+function checkoutBranchLane(
   configDir: string,
-  config: LaneConfig,
+  config: LanesConfig,
   base: BaseConfig,
   branchName: string,
   options: ForceOption = {}
-): { location: TaskLocation; created: boolean } {
+): { location: LaneLocation; created: boolean } {
   const baseRepoRoot = resolveBaseRepoRoot(configDir, base);
 
-  // Git keeps a branch in one worktree at a time: an existing task is simply opened,
+  // Git keeps a branch in one worktree at a time: an existing lane is simply opened,
   // anything else (the base clone itself, a worktree made by hand) has to let go first.
   const holder = describeBranchHolders(configDir, config, base, baseRepoRoot).get(branchName);
-  if (holder?.taskName) {
-    return { location: locateInBase(configDir, base, holder.taskName), created: false };
+  if (holder?.laneName) {
+    return { location: locateInBase(configDir, base, holder.laneName), created: false };
   }
   if (holder) {
     throw new Error(
@@ -241,48 +241,48 @@ function checkoutBranchTask(
     throw new Error(`Branch '${branchName}' exists neither locally nor on origin.`);
   }
 
-  // A folder by that name is some other branch's task (this branch's was found above).
-  const candidates = taskNamesForBranch(config, base, branchName).map((taskName) =>
-    locateInBase(configDir, base, taskName)
+  // A folder by that name is some other branch's lane (this branch's was found above).
+  const candidates = laneNamesForBranch(config, base, branchName).map((laneName) =>
+    locateInBase(configDir, base, laneName)
   );
   const location = candidates.find((candidate) => !candidate.exists);
   if (!location) {
     const taken = candidates.at(-1)!;
-    const onBranch = currentBranch(taken.taskPath);
+    const onBranch = currentBranch(taken.lanePath);
     throw new Error(
-      `Task folder already exists: ${taken.taskPath}${onBranch ? ` (on branch '${onBranch}')` : ""}\nRemove it or check that branch out there by hand.`
+      `Lane folder already exists: ${taken.lanePath}${onBranch ? ` (on branch '${onBranch}')` : ""}\nRemove it or check that branch out there by hand.`
     );
   }
 
   assertBaseIsClean(base, baseRepoRoot, options);
 
-  ensureTasksDir(configDir, base.tasksDir);
-  console.log(pc.cyan(`Checking out ${branchName} as ${location.taskName}...`));
-  const { behind } = addBranchWorktree(baseRepoRoot, location.taskPath, branchName);
+  ensureLanesDir(configDir, base.lanesDir);
+  console.log(pc.cyan(`Checking out ${branchName} as ${location.laneName}...`));
+  const { behind } = addBranchWorktree(baseRepoRoot, location.lanePath, branchName);
   if (behind > 0) {
     console.log(
-      pc.yellow(`Local branch '${branchName}' is ${behind} commit(s) behind origin; run 'git pull' in the task to catch up.`)
+      pc.yellow(`Local branch '${branchName}' is ${behind} commit(s) behind origin; run 'git pull' in the lane to catch up.`)
     );
   }
-  copyBaseIntoTask(configDir, location);
+  copyBaseIntoLane(configDir, location);
   return { location: { ...location, exists: true }, created: true };
 }
 
 export async function checkoutAndOpen(
   configDir: string,
-  config: LaneConfig,
+  config: LanesConfig,
   base: BaseConfig,
   branchName: string,
   options: OpenOptions & ForceOption
 ): Promise<void> {
-  const { location, created } = checkoutBranchTask(configDir, config, base, branchName, options);
+  const { location, created } = checkoutBranchLane(configDir, config, base, branchName, options);
   const runSetup = created ? await askToRunSetup(config, base) : false;
-  openTask(configDir, config, location, { ...options, created, runSetup });
+  openLane(configDir, config, location, { ...options, created, runSetup });
 }
 
-// Asked once per new task, and only when there is something to run: the base's `create`
+// Asked once per new lane, and only when there is something to run: the base's `create`
 // list, or a setup command carried by one of its `open` lines (a Warp tab's --setup).
-export async function askToRunSetup(config: LaneConfig, base: BaseConfig): Promise<boolean> {
+export async function askToRunSetup(config: LanesConfig, base: BaseConfig): Promise<boolean> {
   const lists = resolveBaseCommands(config, base);
   const commands = [...lists.open.flatMap(setupCommandsOf), ...lists.create];
   if (commands.length === 0 || !input.isTTY) {
@@ -299,41 +299,41 @@ export async function promptForExactConfirmation(prompt: string, expected: strin
   }
 }
 
-// The branch a task is on, read from its worktree rather than rebuilt from its name, so
-// a task checked out from someone else's branch still removes the right one. A task left
-// detached falls back to the branch lane would have created for it.
-function taskBranch(config: LaneConfig, location: TaskLocation): string {
-  return currentBranch(location.taskPath) ?? taskBranchName(config, location.base, location.taskName);
+// The branch a lane is on, read from its worktree rather than rebuilt from its name, so
+// a lane checked out from someone else's branch still removes the right one. A lane left
+// detached falls back to the branch lanes would have created for it.
+function laneBranch(config: LanesConfig, location: LaneLocation): string {
+  return currentBranch(location.lanePath) ?? laneBranchName(config, location.base, location.laneName);
 }
 
 // Runs the base's `remove` list (a failure there, Docker not running say, must not keep
-// the task from being removed), then removes the worktree (discarding uncommitted
+// the lane from being removed), then removes the worktree (discarding uncommitted
 // changes), its branch when git considers it merged, and whatever plugin commands
 // left behind for it.
-export function deleteTask(configDir: string, config: LaneConfig, location: TaskLocation, baseRepoRoot: string): void {
+export function deleteLane(configDir: string, config: LanesConfig, location: LaneLocation, baseRepoRoot: string): void {
   // Read before the worktree goes, since the branch is only known from inside it.
-  const branchName = taskBranch(config, location);
-  runList(taskContext(configDir, config, location, false), resolveBaseCommands(config, location.base).remove, {
+  const branchName = laneBranch(config, location);
+  runList(laneContext(configDir, config, location, false), resolveBaseCommands(config, location.base).remove, {
     announce: true,
     failureNote: "continuing with removal"
   });
-  removeWorktree(baseRepoRoot, location.taskPath, { force: true });
+  removeWorktree(baseRepoRoot, location.lanePath, { force: true });
 
   const branchResult = deleteLocalBranch(baseRepoRoot, branchName);
   if (!branchResult.deleted && branchResult.message && branchResult.message !== "branch not found") {
     console.log(pc.yellow(`Worktree removed but branch '${branchName}' was kept: ${branchResult.message}`));
   }
-  forgetTask(taskIdentity(config, location.base, location.taskName).key);
+  forgetLane(laneIdentity(config, location.base, location.laneName).key);
 }
 
-export async function confirmAndRemoveTask(configDir: string, config: LaneConfig, location: TaskLocation): Promise<void> {
+export async function confirmAndRemoveLane(configDir: string, config: LanesConfig, location: LaneLocation): Promise<void> {
   const baseRepoRoot = resolveBaseRepoRoot(configDir, location.base);
-  if (!fs.existsSync(location.taskPath)) {
-    throw new Error(`Task folder does not exist: ${location.taskPath}`);
+  if (!fs.existsSync(location.lanePath)) {
+    throw new Error(`Lane folder does not exist: ${location.lanePath}`);
   }
 
-  const { label } = taskIdentity(config, location.base, location.taskName);
-  await promptForExactConfirmation(`Type 'delete' to permanently remove the task worktree ${label}:`, "delete");
-  deleteTask(configDir, config, location, baseRepoRoot);
-  console.log(pc.green(`Removed task: ${location.taskPath}`));
+  const { label } = laneIdentity(config, location.base, location.laneName);
+  await promptForExactConfirmation(`Type 'delete' to permanently remove the lane worktree ${label}:`, "delete");
+  deleteLane(configDir, config, location, baseRepoRoot);
+  console.log(pc.green(`Removed lane: ${location.lanePath}`));
 }

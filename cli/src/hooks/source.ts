@@ -8,7 +8,7 @@ import { builtinTemplate } from "./templates.js";
 
 const FETCH_TIMEOUT_MS = 15_000;
 
-// One fetch per source per process: `lane init` replays answers after `back`, and a
+// One fetch per source per process: `lanes init` replays answers after `back`, and a
 // replayed source question must not hit the network again.
 const cache = new Map<string, { lists: CommandDocument } | { error: string }>();
 

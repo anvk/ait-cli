@@ -1,11 +1,11 @@
 // Clones paths with clonefile(2), reading one "source\tdestination" pair per line
 // from stdin. On APFS this shares the blocks copy-on-write, so cloning a directory
 // tree is a single near-instant call that consumes no extra disk space, where a
-// normal copy walks every file. lane uses it to mirror a base folder's untracked
-// content (node_modules and friends) into a new task worktree.
+// normal copy walks every file. lanes uses it to mirror a base folder's untracked
+// content (node_modules and friends) into a new lane worktree.
 //
-// The destination must not already exist; lane only clones paths that a freshly
-// created worktree does not have. Any failure exits non-zero and lane copies instead.
+// The destination must not already exist; lanes only clones paths that a freshly
+// created worktree does not have. Any failure exits non-zero and lanes copies instead.
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>

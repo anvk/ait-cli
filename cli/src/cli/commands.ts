@@ -1,4 +1,4 @@
-// The entry point of each `lane` subcommand, called from bin/lane.ts.
+// The entry point of each `lanes` subcommand, called from bin/lanes.ts.
 import fs from "node:fs";
 import path from "node:path";
 import { stdin as input, stdout as output } from "node:process";
@@ -11,36 +11,36 @@ import { interactiveInit } from "./init.js";
 import {
   askToRunSetup,
   checkoutAndOpen,
-  confirmAndRemoveTask,
-  createTaskFolder,
-  deleteTask,
+  confirmAndRemoveLane,
+  createLaneFolder,
+  deleteLane,
   describeBranchHolders,
-  openTask,
+  openLane,
   promptForExactConfirmation,
   type ForceOption,
   type OpenOptions
 } from "../core/lifecycle.js";
-import { pickTask, type PickerItem } from "../ui/picker.js";
+import { pickLane, type PickerItem } from "../ui/picker.js";
 import { ensurePlugins } from "../plugins/ensure.js";
 import { findLeftovers } from "../plugins/registry.js";
 import { loadCommandsFromSource } from "../hooks/source.js";
 import { COMMAND_LISTS } from "../plugins/types.js";
 import {
-  gatherTaskDisplayItems,
+  gatherLaneDisplayItems,
   isOlderThan,
-  noTasksHint,
-  printRichTaskList,
-  splitTasksByAge,
-  type TaskDisplayItem
-} from "../ui/tasklist.js";
+  noLanesHint,
+  printRichLaneList,
+  splitLanesByAge,
+  type LaneDisplayItem
+} from "../ui/lanelist.js";
 import type { BaseConfig } from "../core/types.js";
 import { errorMessage } from "../core/util.js";
 import {
-  exportLaneRepoCommand,
-  knownTaskKeys,
+  exportLanesRepoCommand,
+  knownLaneKeys,
   loadWorkspace,
   locateInBase,
-  locateTask,
+  locateLane,
   requireBase,
   resolveBaseRepoRoot
 } from "../core/workspace.js";
@@ -51,17 +51,22 @@ export interface BaseOption {
   base?: string;
 }
 
-export async function runInitCommand(repoOption?: string): Promise<void> {
+export async function runInitCommand(template: string | undefined, repoOption?: string): Promise<void> {
   const targetDir = path.resolve(repoOption || process.cwd());
-  const configPath = await interactiveInit(targetDir);
+  // Checked before any question, so a mistyped path or URL fails at once. Loads are
+  // cached, so the wizard does not fetch it again.
+  if (template) {
+    await loadCommandsFromSource(template, targetDir);
+  }
+  const configPath = await interactiveInit(targetDir, { template });
   console.log(pc.green(`Created config: ${configPath}`));
   const configDir = path.dirname(configPath);
   for (const base of readConfig(configDir).bases) {
     warnIfBaseFolderIsNotARepo(configDir, base);
   }
   console.log("");
-  console.log("To run lane from any directory, run:");
-  console.log(pc.cyan(`  ${exportLaneRepoCommand(configDir)}`));
+  console.log("To run lanes from any directory, run:");
+  console.log(pc.cyan(`  ${exportLanesRepoCommand(configDir)}`));
 }
 
 // Init records the base folder without requiring it to exist yet, so a user who typed a
@@ -74,47 +79,48 @@ function warnIfBaseFolderIsNotARepo(configDir: string, base: BaseConfig): void {
     console.log(pc.yellow(errorMessage(error)));
     console.log(
       pc.yellow(
-        `'${base.folder}' must be a git clone of your project. Every task is a worktree of that repository. ` +
-          `Clone it there (for example 'gh repo clone <owner>/<repo> ${base.folder}') before running lane.`
+        `'${base.folder}' must be a git clone of your project. Every lane is a worktree of that repository. ` +
+          `Clone it there (for example 'gh repo clone <owner>/<repo> ${base.folder}') before running lanes.`
       )
     );
   }
 }
 
 export async function runCreateCommand(
-  taskId: string,
+  laneId: string,
   options: OpenOptions & BaseOption & ForceOption & { open: boolean },
   repoOption?: string
 ): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   await ensurePlugins(config);
-  const location = locateTask(configDir, config, taskId, requireBase(config, options.base).name);
+  const location = locateLane(configDir, config, laneId, requireBase(config, options.base).name);
   if (location.exists) {
-    throw new Error(`Task folder already exists: ${location.taskPath}\nUse \`lane open ${taskId}\` instead.`);
+    throw new Error(`Lane folder already exists: ${location.lanePath}\nUse \`lanes open ${laneId}\` instead.`);
   }
 
-  createTaskFolder(configDir, config, location, options);
+  createLaneFolder(configDir, config, location, options);
   if (options.open) {
-    openTask(configDir, config, location, { ...options, created: true, runSetup: await askToRunSetup(config, location.base) });
+    openLane(configDir, config, location, { ...options, created: true, runSetup: await askToRunSetup(config, location.base) });
   }
 }
 
-export async function runTaskCommand(
-  taskId: string,
+// `lanes open <id>` and `lanes <id>`: opens the lane, creating it first when it does not exist.
+export async function runOpenCommand(
+  laneId: string,
   options: OpenOptions & BaseOption & ForceOption,
   repoOption?: string
 ): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   await ensurePlugins(config);
-  const location = locateTask(configDir, config, taskId, options.base);
+  const location = locateLane(configDir, config, laneId, options.base);
 
   const created = !location.exists;
   let runSetup = false;
   if (created) {
-    createTaskFolder(configDir, config, location, options);
+    createLaneFolder(configDir, config, location, options);
     runSetup = await askToRunSetup(config, location.base);
   }
-  openTask(configDir, config, location, { ...options, created, runSetup });
+  openLane(configDir, config, location, { ...options, created, runSetup });
 }
 
 export async function runCheckoutCommand(
@@ -128,28 +134,18 @@ export async function runCheckoutCommand(
   await checkoutAndOpen(configDir, config, base, branchName.trim().replace(/^origin\//, ""), options);
 }
 
-export async function runOpenCommand(taskId: string, options: BaseOption, repoOption?: string): Promise<void> {
+export async function runRemoveCommand(laneId: string, options: BaseOption, repoOption?: string): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   await ensurePlugins(config);
-  const location = locateTask(configDir, config, taskId, options.base);
-  if (!location.exists) {
-    throw new Error(`Task folder does not exist: ${location.taskPath}`);
-  }
-  openTask(configDir, config, location, {});
-}
-
-export async function runRemoveCommand(taskId: string, options: BaseOption, repoOption?: string): Promise<void> {
-  const { configDir, config } = loadWorkspace(repoOption);
-  await ensurePlugins(config);
-  await confirmAndRemoveTask(configDir, config, locateTask(configDir, config, taskId, options.base));
+  await confirmAndRemoveLane(configDir, config, locateLane(configDir, config, laneId, options.base));
 }
 
 export async function runListCommand(repoOption?: string): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
-  await printRichTaskList(configDir, config);
+  await printRichLaneList(configDir, config);
 }
 
-export async function runTasksCommand(
+export async function runLanesCommand(
   options: OpenOptions & BaseOption & ForceOption,
   repoOption?: string
 ): Promise<void> {
@@ -158,37 +154,37 @@ export async function runTasksCommand(
   // Fail on a typo up front rather than after the picker has been drawn.
   const initialBase = options.base ? findBase(config, options.base).name : undefined;
 
-  // The picker needs a terminal on both ends: `lane tasks | cat` and `lane tasks > file`
-  // fall back to the same static report as `lane list`.
+  // The picker needs a terminal on both ends: `lanes | cat` and `lanes > file`
+  // fall back to the same static report as `lanes list`.
   if (!input.isTTY || !output.isTTY) {
-    await printRichTaskList(configDir, config);
+    await printRichLaneList(configDir, config);
     return;
   }
 
   // Kept across loops while nothing changed: coming back from the branch search reuses
   // it, and only a removal throws it away.
-  let taskItems: TaskDisplayItem[] | null = null;
+  let laneItems: LaneDisplayItem[] | null = null;
   while (true) {
-    // Gathering walks every task folder's mtimes and runs `git log` per task, which
-    // is a visible pause with many tasks. The line is erased before the first frame
+    // Gathering walks every lane folder's mtimes and runs `git log` per lane, which
+    // is a visible pause with many lanes. The line is erased before the first frame
     // so the picker's redraw math does not count it.
-    if (!taskItems) {
-      output.write(pc.dim("Loading tasks…"));
-      taskItems = await gatherTaskDisplayItems(configDir, config);
+    if (!laneItems) {
+      output.write(pc.dim("Loading lanes…"));
+      laneItems = await gatherLaneDisplayItems(configDir, config);
       output.write("\x1b[2K\r");
     }
 
-    const { recent, old } = splitTasksByAge(taskItems, config.oldTaskDays);
+    const { recent, old } = splitLanesByAge(laneItems, config.oldLaneDays);
     const items: PickerItem[] = [
       ...recent.map((item) => ({ ...item, isOld: false })),
       ...old.map((item) => ({ ...item, isOld: true }))
     ];
 
-    const result = await pickTask({
+    const result = await pickLane({
       items,
-      taskPrefix: config.taskPrefix,
-      oldTaskDays: config.oldTaskDays,
-      emptyHint: noTasksHint(configDir, config),
+      lanePrefix: config.lanePrefix,
+      oldLaneDays: config.oldLaneDays,
+      emptyHint: noLanesHint(configDir, config),
       bases: baseNames(config),
       initialBase
     });
@@ -197,10 +193,10 @@ export async function runTasksCommand(
       case "cancel":
         return;
       case "open":
-        openTask(configDir, config, locateInBase(configDir, findBase(config, result.item.baseName), result.item.taskName), options);
+        openLane(configDir, config, locateInBase(configDir, findBase(config, result.item.baseName), result.item.laneName), options);
         return;
       case "create":
-        await runTaskCommand(result.taskId, { ...options, base: result.baseName }, repoOption);
+        await runOpenCommand(result.laneId, { ...options, base: result.baseName }, repoOption);
         return;
       case "checkout": {
         const branch = await pickBranch({
@@ -211,7 +207,7 @@ export async function runTasksCommand(
             const { branches, total } = searchRemoteBranches(baseRepoRoot, query);
             const items = branches.map((remote) => {
               const holder = holders.get(remote.name);
-              const note = holder ? (holder.taskName ? `task ${holder.taskName}` : `checked out in ${holder.folder}`) : null;
+              const note = holder ? (holder.laneName ? `lane ${holder.laneName}` : `checked out in ${holder.folder}`) : null;
               return { ...remote, note };
             });
             return { items, total };
@@ -231,18 +227,18 @@ export async function runTasksCommand(
       }
       case "remove":
         // A mistyped confirmation (or a failed removal) reports and returns to the
-        // picker rather than ending the session the way a bare `lane remove` does.
+        // picker rather than ending the session the way a bare `lanes remove` does.
         try {
-          await confirmAndRemoveTask(
+          await confirmAndRemoveLane(
             configDir,
             config,
-            locateInBase(configDir, findBase(config, result.item.baseName), result.item.taskName)
+            locateInBase(configDir, findBase(config, result.item.baseName), result.item.laneName)
           );
         } catch (error) {
           console.log(pc.red(errorMessage(error)));
         }
         console.log("");
-        taskItems = null;
+        laneItems = null;
         break;
     }
   }
@@ -251,7 +247,7 @@ export async function runTasksCommand(
 export async function runPurgeCommand(options: { days?: string }, repoOption?: string): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   await ensurePlugins(config);
-  const days = options.days ? Number.parseInt(options.days, 10) : config.oldTaskDays;
+  const days = options.days ? Number.parseInt(options.days, 10) : config.oldLaneDays;
   if (!Number.isFinite(days) || days < 1) {
     throw new Error("`--days` must be a positive integer.");
   }
@@ -259,29 +255,29 @@ export async function runPurgeCommand(options: { days?: string }, repoOption?: s
   // Every base repo is resolved before anything is listed, so a broken base fails
   // the command instead of failing halfway through the removals.
   const baseRepoRoots = new Map(config.bases.map((base) => [base.name, resolveBaseRepoRoot(configDir, base)]));
-  const taskItems = await gatherTaskDisplayItems(configDir, config);
-  if (taskItems.length === 0) {
-    console.log(pc.yellow("No task folders found."));
+  const laneItems = await gatherLaneDisplayItems(configDir, config);
+  if (laneItems.length === 0) {
+    console.log(pc.yellow("No lane folders found."));
     return;
   }
 
   const now = Date.now();
-  const purgeCandidates = taskItems.filter((item) => isOlderThan(item, days, now));
+  const purgeCandidates = laneItems.filter((item) => isOlderThan(item, days, now));
   if (purgeCandidates.length === 0) {
-    console.log(pc.yellow(`No tasks older than ${days} day(s) were found.`));
+    console.log(pc.yellow(`No lanes older than ${days} day(s) were found.`));
     return;
   }
 
   const showBase = config.bases.length > 1;
-  console.log(pc.yellow(`Tasks to purge (older than ${days} day(s)):`));
+  console.log(pc.yellow(`Lanes to purge (older than ${days} day(s)):`));
   for (const candidate of purgeCandidates) {
     const baseTag = showBase ? ` [${candidate.baseName}]` : "";
-    console.log(`- ${candidate.taskName}${baseTag} (last update: ${new Date(candidate.lastUpdatedMs).toISOString()})`);
+    console.log(`- ${candidate.laneName}${baseTag} (last update: ${new Date(candidate.lastUpdatedMs).toISOString()})`);
   }
 
   const confirmationToken = `PURGE ${purgeCandidates.length}`;
   await promptForExactConfirmation(
-    `Type '${confirmationToken}' to permanently purge these ${purgeCandidates.length} task(s):`,
+    `Type '${confirmationToken}' to permanently purge these ${purgeCandidates.length} lane(s):`,
     confirmationToken
   );
 
@@ -290,16 +286,16 @@ export async function runPurgeCommand(options: { days?: string }, repoOption?: s
   for (const candidate of purgeCandidates) {
     const base = findBase(config, candidate.baseName);
     try {
-      deleteTask(configDir, config, locateInBase(configDir, base, candidate.taskName), baseRepoRoots.get(base.name)!);
+      deleteLane(configDir, config, locateInBase(configDir, base, candidate.laneName), baseRepoRoots.get(base.name)!);
       removedCount += 1;
     } catch (error) {
-      failures.push(`${candidate.taskName}: ${errorMessage(error)}`);
+      failures.push(`${candidate.laneName}: ${errorMessage(error)}`);
     }
   }
 
-  console.log(pc.green(`Purged ${removedCount} task(s).`));
+  console.log(pc.green(`Purged ${removedCount} lane(s).`));
   if (failures.length > 0) {
-    console.log(pc.red(`Failed to purge ${failures.length} task(s):`));
+    console.log(pc.red(`Failed to purge ${failures.length} lane(s):`));
     for (const failure of failures) {
       console.log(`- ${failure}`);
     }
@@ -313,10 +309,10 @@ export function runPruneCommand(repoOption?: string): void {
     const repoRoot = resolveBaseRepoRoot(configDir, base);
     return { base, repoRoot, worktrees: listPrunableWorktrees(repoRoot) };
   });
-  const leftovers = findLeftovers(knownTaskKeys(configDir, config));
+  const leftovers = findLeftovers(knownLaneKeys(configDir, config));
   const prunableCount = prunable.reduce((sum, entry) => sum + entry.worktrees.length, 0);
   if (leftovers.length === 0 && prunableCount === 0) {
-    console.log(pc.green("Nothing to prune: every leftover file and git worktree belongs to an existing task."));
+    console.log(pc.green("Nothing to prune: every leftover file and git worktree belongs to an existing lane."));
     return;
   }
 

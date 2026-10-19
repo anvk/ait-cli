@@ -190,7 +190,7 @@ export function scrollWindow(
   return { visible, scrollTop: top };
 }
 
-// `  Search: text▏            12/40 tasks`: an input field with a caret while focused and
+// `  Search: text▏            12/40 lanes`: an input field with a caret while focused and
 // a dim note right-aligned beside it, dropped when the two would not fit.
 export function inputHeaderLine(
   label: string,

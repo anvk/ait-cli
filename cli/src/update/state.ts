@@ -1,6 +1,6 @@
-// Where lane remembers what the last background check found. Deliberately outside the
+// Where lanes remembers what the last background check found. Deliberately outside the
 // managed checkout: the updater resets that tree, and a file inside it would also show up
-// in lane's own "is the checkout clean" guard.
+// in the lanes "is the checkout clean" guard.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -22,7 +22,7 @@ interface InstallMarker {
 const LOCK_STALE_MS = 10 * 60 * 1000;
 
 function stateDir(): string {
-  return path.join(os.homedir(), ".lane");
+  return path.join(os.homedir(), ".lanes");
 }
 
 function statePath(): string {

@@ -27,7 +27,7 @@ export interface UpdateOutcome {
   reason?: string;
 }
 
-// Progress goes to stderr so `lane list | grep` never sees it.
+// Progress goes to stderr so `lanes list | grep` never sees it.
 function note(message: string): void {
   process.stderr.write(`${message}\n`);
 }
@@ -52,7 +52,7 @@ function updateAlreadyFailed(): boolean {
   return Boolean(failedSha && remoteSha && failedSha === remoteSha);
 }
 
-// Asks the remote where main points. Used by the detached check and by `lane update`,
+// Asks the remote where main points. Used by the detached check and by `lanes update`,
 // which must never answer from the cache.
 export function probeRemote(info: InstallPaths): string | null {
   if (!info.gitRoot) {
@@ -117,27 +117,27 @@ function buildAndSwap(info: InstallPaths): string | null {
   runAllowFailure(process.execPath, [path.join(root, "tools", "build-clonedir.mjs")], {
     cwd: root,
     timeout: BUILD_TIMEOUT_MS,
-    env: { ...process.env, LANE_BUILD_OUTDIR: next }
+    env: { ...process.env, LANES_BUILD_OUTDIR: next }
   });
 
   // tsc writes 644; npm is what normally makes a bin entry executable, and it does not run
-  // here. Without this the swapped-in lane is "permission denied".
+  // here. Without this the swapped-in lanes is "permission denied".
   const marked = runAllowFailure(process.execPath, [path.join(root, "tools", "build-bin-mode.mjs")], {
     cwd: root,
     timeout: 30_000,
-    env: { ...process.env, LANE_BUILD_OUTDIR: next }
+    env: { ...process.env, LANES_BUILD_OUTDIR: next }
   });
   if (marked.status !== 0) {
     fs.rmSync(next, { recursive: true, force: true });
     return marked.stderr.split("\n")[0] || "could not make the new build executable";
   }
 
-  // lane imports its whole module graph eagerly, so loading the new entry point is a
+  // lanes imports its whole module graph eagerly, so loading the new entry point is a
   // complete smoke test of the build for the price of one process start.
-  const smoke = runAllowFailure(path.join(next, "bin", "lane.js"), ["--version"], {
+  const smoke = runAllowFailure(path.join(next, "bin", "lanes.js"), ["--version"], {
     cwd: root,
     timeout: 30_000,
-    env: { ...process.env, [CHILD_ENV]: "1", LANE_NO_AUTO_UPDATE: "1" }
+    env: { ...process.env, [CHILD_ENV]: "1", LANES_NO_AUTO_UPDATE: "1" }
   });
   if (smoke.status !== 0) {
     fs.rmSync(next, { recursive: true, force: true });
@@ -163,11 +163,11 @@ function rollback(info: InstallPaths, to: string): void {
 export function applyUpdate(info: InstallPaths): UpdateOutcome {
   const release = acquireLock();
   if (!release) {
-    return { status: "skipped", reason: "another lane is already updating" };
+    return { status: "skipped", reason: "another lanes is already updating" };
   }
 
   // Ctrl-C between here and the end would be far worse than a failed build: a half-pruned
-  // node_modules leaves lane unable to load at all, and lane is what you would fix it with.
+  // node_modules leaves lanes unable to load at all, and lanes is what you would fix it with.
   const ignoreSigint = () => {};
   process.on("SIGINT", ignoreSigint);
 
@@ -220,10 +220,10 @@ export function applyUpdate(info: InstallPaths): UpdateOutcome {
 }
 
 export function recoveryHint(): string {
-  return 'Reinstall with: sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane-cli/main/tools/install.sh)"';
+  return 'Reinstall with: sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lanes/main/tools/install.sh)"';
 }
 
-// Installed plugins move with lane: a plugin from lane's own checkout has just been moved,
+// Installed plugins move with lanes: a plugin from the lanes checkout has just been moved,
 // and a cloned one is pulled. A plugin that fails stays on its previous build.
 export function updatePluginsQuietly(): string[] {
   try {
@@ -236,7 +236,7 @@ export function updatePluginsQuietly(): string[] {
 // Runs the user's original command on the new build, then exits with whatever it did.
 function reexec(info: InstallPaths, updatedTo: string): never {
   if (!fs.existsSync(info.distEntry)) {
-    note(pc.red(`lane updated but ${info.distEntry} is missing.`));
+    note(pc.red(`lanes updated but ${info.distEntry} is missing.`));
     note(recoveryHint());
     process.exit(1);
   }
@@ -251,7 +251,7 @@ function reexec(info: InstallPaths, updatedTo: string): never {
   process.off("SIGINT", ignoreSigint);
 
   // Printed after the child so a full-screen picker cannot scroll it away.
-  note(pc.dim(`lane updated to ${updatedTo}`));
+  note(pc.dim(`lanes updated to ${updatedTo}`));
 
   if (child.signal) {
     process.kill(process.pid, child.signal);
@@ -278,7 +278,7 @@ export function maybeAutoUpdate(argv: string[]): void {
       return;
     }
 
-    note(pc.dim(`Updating lane from ${describeVersion(resolveInstall())}…`));
+    note(pc.dim(`Updating lanes from ${describeVersion(resolveInstall())}…`));
     const outcome = applyUpdate(paths);
     if (outcome.status === "updated" && outcome.to) {
       for (const line of updatePluginsQuietly()) {
@@ -287,7 +287,7 @@ export function maybeAutoUpdate(argv: string[]): void {
       reexec(paths, outcome.to);
     }
     if (outcome.status === "failed") {
-      note(pc.yellow(`lane could not update: ${outcome.reason}`));
+      note(pc.yellow(`lanes could not update: ${outcome.reason}`));
       note(pc.dim(recoveryHint()));
     }
   } catch {

@@ -1,15 +1,15 @@
-// The interface a lane plugin implements. A plugin is a command lane ships as `lane <name> …`
-// that a base's command lists may use; lane asks it to validate its lines when a config is
-// read, to say what it needs in doctor, and to clean up what it left on disk for a task.
+// The interface a lanes plugin implements. A plugin is a command lanes ships as `lanes <name> …`
+// that a base's command lists may use; lanes asks it to validate its lines when a config is
+// read, to say what it needs in doctor, and to clean up what it left on disk for a lane.
 import type { Command } from "commander";
 
 export declare const API_VERSION: 1;
 
 export declare const ENV: {
-  readonly task: "LANE_TASK";
-  readonly taskPath: "LANE_TASK_PATH";
-  readonly taskKey: "LANE_TASK_KEY";
-  readonly taskLabel: "LANE_TASK_LABEL";
+  readonly lane: "LANE_NAME";
+  readonly lanePath: "LANE_PATH";
+  readonly laneKey: "LANE_KEY";
+  readonly laneLabel: "LANE_LABEL";
   readonly branch: "LANE_BRANCH";
   readonly base: "LANE_BASE";
   readonly root: "LANE_ROOT";
@@ -18,22 +18,22 @@ export declare const ENV: {
   readonly runSetup: "LANE_RUN_SETUP";
 };
 
-// What a base runs around a task. Every entry is a shell command line.
-export interface TaskCommands {
-  // Every time the task opens.
+// What a base runs around a lane. Every entry is a shell command line.
+export interface LaneCommands {
+  // Every time the lane opens.
   open: string[];
-  // Once, right after the task is created, when the setup prompt is accepted.
+  // Once, right after the lane is created, when the setup prompt is accepted.
   create: string[];
-  // Before the task is deleted, while its folder still exists.
+  // Before the lane is deleted, while its folder still exists.
   remove: string[];
 }
 
-export type CommandList = keyof TaskCommands;
+export type CommandList = keyof LaneCommands;
 
-// The task a command line runs for; the same facts reach commands through ENV.
-export interface TaskContext {
-  taskName: string;
-  taskPath: string;
+// The lane a command line runs for; the same facts reach commands through ENV.
+export interface LaneContext {
+  laneName: string;
+  lanePath: string;
   key: string;
   label: string;
   branch: string;
@@ -48,12 +48,12 @@ export interface DoctorLine {
 }
 
 export interface Leftover {
-  // The task key the files were written under.
+  // The lane key the files were written under.
   key: string;
   files: string[];
 }
 
-// The questions `lane init` can ask on a plugin's behalf. Every answer is a trimmed string;
+// The questions `lanes init` can ask on a plugin's behalf. Every answer is a trimmed string;
 // a blank answer takes the default.
 export interface Asker {
   ask(label: string, defaultValue?: string): Promise<string>;
@@ -69,29 +69,29 @@ export interface Asker {
 export interface Plugin {
   // Which version of this interface the plugin was written against.
   readonly api: typeof API_VERSION;
-  // The subcommand name: `lane <name>`. Letters, digits and dashes.
+  // The subcommand name: `lanes <name>`. Letters, digits and dashes.
   readonly name: string;
   readonly description: string;
-  // Adds the plugin's subcommands under `lane <name>`. Use `command.command("sub")` on the
-  // given instance rather than constructing Commands of your own, so they share lane's
+  // Adds the plugin's subcommands under `lanes <name>`. Use `command.command("sub")` on the
+  // given instance rather than constructing Commands of your own, so they share the lanes
   // commander.
   register(command: Command): void;
-  // Throws with a reason when the words after `lane <name>` are not a valid command line.
+  // Throws with a reason when the words after `lanes <name>` are not a valid command line.
   // Called whenever a config or document mentioning the plugin is read.
   validate(words: string[]): void;
-  // Human-readable setup commands a line carries, for the prompt shown when a task is
+  // Human-readable setup commands a line carries, for the prompt shown when a lane is
   // created ("API: make dev").
   setupCommands(words: string[]): string[];
-  // Checks for `lane doctor`, asked only when some base in the workspace uses the plugin.
+  // Checks for `lanes doctor`, asked only when some base in the workspace uses the plugin.
   doctor(): DoctorLine[];
-  // Delete whatever the plugin wrote for the task with this key.
+  // Delete whatever the plugin wrote for the lane with this key.
   forget(key: string): void;
-  // Files written for tasks whose key is no longer in `knownKeys`, for `lane prune`.
+  // Files written for lanes whose key is no longer in `knownKeys`, for `lanes prune`.
   findLeftovers(knownKeys: string[]): Leftover[];
   // Close the terminal tab the current command runs in, when it is this plugin's terminal.
   // Return false when it is not.
   closeCurrentTab?(): boolean;
-  // Ask the questions that make up one line, for `lane init`. Returns the words after
-  // `lane <name>`. `existing` holds the words of the line being edited, when there is one.
+  // Ask the questions that make up one line, for `lanes init`. Returns the words after
+  // `lanes <name>`. `existing` holds the words of the line being edited, when there is one.
   prompt?(ask: Asker, existing?: string[]): Promise<string[]>;
 }
