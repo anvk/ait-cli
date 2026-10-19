@@ -9,6 +9,20 @@ base's `node_modules` and env files so it is ready to run straight away, and ope
 Warp tab and a terminal in another, an editor such as `cursor .`, a tmux window, or anything else with a command line.
 Run `lane` to jump between tasks, and `lane remove 1437` to clean one up when it is merged.
 
+## Out of the box
+
+The built-in `default` setup is made for [Warp](https://www.warp.dev) and [Claude Code](https://www.anthropic.com/claude-code).
+Each task opens as two Warp tabs in the task folder:
+
+- **Claude** runs `claude --continue`, which picks up that task's last Claude Code session. A task with no session
+  yet starts a fresh one.
+- **Terminal** is a plain shell, for git, tests and anything else.
+
+You only need both installed: when you choose `default`, `lane init` offers to install lane's Warp plugin for you.
+Nothing else in lane is tied to either tool. To use a different agent, change the tab's
+command in `.lane.json`, for example `"lane warp tab Agent --color yellow --command 'codex'"`. To skip Warp, replace
+the tabs with any command lines, such as `cursor .` or `tmux new-window -c {path} -n {task}`.
+
 ## Quick start
 
 1. Make sure `git`, `node` (22 or later) and `npm` are installed.
@@ -29,9 +43,6 @@ lane init
 When `lane init` asks which command lists to load, press Enter to take `default`: every task opens as two Warp tabs,
 `Claude` and `Terminal`. That is all. Run `lane 1437` to start a task, or `lane` to pick one. The sections below
 explain each step, how updates work, and every command.
-
-To use a different agent, change the tab's command in `.lane.json`, for example
-`"lane warp tab Agent --color yellow --command 'codex'"`. Any program you can start from a terminal works.
 
 ## Install
 
