@@ -1,10 +1,10 @@
 {
-  "name": "lane-plugin-warp",
+  "name": "lanes-plugin-warp",
   "version": "0.1.0",
-  "description": "lane plugin: open a task's folders as Warp tabs",
+  "description": "lanes plugin: open a lane's folders as Warp tabs",
   "type": "module",
   "main": "dist/index.js",
-  "lane": {
+  "lanes": {
     "name": "warp",
     "api": 1
   },
@@ -15,7 +15,7 @@
   "dependencies": {
     "commander": "^12.1.0",
     "picocolors": "^1.1.1",
-    "lane-plugin-api": "file:../api"
+    "lanes-plugin-api": "file:../api"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

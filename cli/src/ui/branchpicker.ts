@@ -21,14 +21,14 @@ export interface BranchPickerItem {
   // Known only for branches an earlier fetch brought down.
   committedAtMs: number | null;
   subject: string | null;
-  // Where the branch is already checked out ("task LANE-1437", "checked out in api-base"),
+  // Where the branch is already checked out ("lane ABC-1437", "checked out in api-base"),
   // or `null` when it is free.
   note: string | null;
 }
 
 export type BranchPickerResult =
   | { kind: "select"; baseName: string; branch: string }
-  // `esc`: back to the task picker.
+  // `esc`: back to the lane picker.
   | { kind: "back" }
   | { kind: "cancel" };
 
@@ -37,13 +37,13 @@ export interface BranchPickerOptions {
   // Called only on ⏎, never per keystroke or base switch.
   search: (baseName: string, query: string) => { items: BranchPickerItem[]; total: number };
   // With more than one, a `Base: ‹ api ›` line under the search field switches between
-  // them, like the task picker's create prompt.
+  // them, like the lane picker's create prompt.
   bases: string[];
   initialBase: string;
   initialQuery: string;
 }
 
-// Laid out like the task picker, but nothing is listed until a search runs: typing only
+// Laid out like the lane picker, but nothing is listed until a search runs: typing only
 // edits the query, `⏎` in the search field asks origin and highlights the top result,
 // and `⏎` on a highlighted branch picks it. `highlighted` is -1 while the search field
 // has focus.

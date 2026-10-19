@@ -64,42 +64,42 @@ function remoteBranchExists(repoRoot: string, branchName: string): boolean {
   return refExists(repoRoot, `${REMOTE_PREFIX}${branchName}`);
 }
 
-// A task folder deleted by hand leaves its worktree registered, and git then refuses
+// A lane folder deleted by hand leaves its worktree registered, and git then refuses
 // to add a new one at the same path ("missing but already registered worktree").
 // Pruning only drops records whose folders are gone, so it is safe to do every time.
-function prepareWorktreePath(repoRoot: string, taskPath: string): void {
-  if (fs.existsSync(taskPath)) {
-    throw new Error(`Task folder already exists: ${taskPath}`);
+function prepareWorktreePath(repoRoot: string, lanePath: string): void {
+  if (fs.existsSync(lanePath)) {
+    throw new Error(`Lane folder already exists: ${lanePath}`);
   }
   pruneWorktrees(repoRoot);
 }
 
 interface CreateOrAttachWorktreeArgs {
   repoRoot: string;
-  taskPath: string;
+  lanePath: string;
   branchName: string;
   baseRef: string;
 }
 
-export function createOrAttachWorktree({ repoRoot, taskPath, branchName, baseRef }: CreateOrAttachWorktreeArgs): void {
-  prepareWorktreePath(repoRoot, taskPath);
+export function createOrAttachWorktree({ repoRoot, lanePath, branchName, baseRef }: CreateOrAttachWorktreeArgs): void {
+  prepareWorktreePath(repoRoot, lanePath);
   if (localBranchExists(repoRoot, branchName)) {
-    runInteractive("git", ["worktree", "add", taskPath, branchName], { cwd: repoRoot });
+    runInteractive("git", ["worktree", "add", lanePath, branchName], { cwd: repoRoot });
     return;
   }
-  runInteractive("git", ["worktree", "add", "-b", branchName, taskPath, baseRef], { cwd: repoRoot });
+  runInteractive("git", ["worktree", "add", "-b", branchName, lanePath, baseRef], { cwd: repoRoot });
 }
 
 // Checks an existing branch out into a new worktree: the local branch when there is one
 // (left where it is, so no local commits are lost), otherwise a new local branch of the
 // same name tracking `origin`, so a push goes back to the branch it came from.
 // Returns how many commits the local branch is behind `origin`, when both exist.
-export function addBranchWorktree(repoRoot: string, taskPath: string, branchName: string): { behind: number } {
-  prepareWorktreePath(repoRoot, taskPath);
+export function addBranchWorktree(repoRoot: string, lanePath: string, branchName: string): { behind: number } {
+  prepareWorktreePath(repoRoot, lanePath);
 
   const hasRemote = remoteBranchExists(repoRoot, branchName);
   if (localBranchExists(repoRoot, branchName)) {
-    runInteractive("git", ["worktree", "add", taskPath, branchName], { cwd: repoRoot });
+    runInteractive("git", ["worktree", "add", lanePath, branchName], { cwd: repoRoot });
     if (!hasRemote) {
       return { behind: 0 };
     }
@@ -112,14 +112,14 @@ export function addBranchWorktree(repoRoot: string, taskPath: string, branchName
   if (!hasRemote) {
     throw new Error(`Branch '${branchName}' exists neither locally nor on origin.`);
   }
-  runInteractive("git", ["worktree", "add", "--track", "-b", branchName, taskPath, `origin/${branchName}`], {
+  runInteractive("git", ["worktree", "add", "--track", "-b", branchName, lanePath, `origin/${branchName}`], {
     cwd: repoRoot
   });
   return { behind: 0 };
 }
 
-export function removeWorktree(repoRoot: string, taskPath: string, options: { force?: boolean } = {}): void {
-  runInteractive("git", ["worktree", "remove", ...(options.force ? ["--force"] : []), taskPath], { cwd: repoRoot });
+export function removeWorktree(repoRoot: string, lanePath: string, options: { force?: boolean } = {}): void {
+  runInteractive("git", ["worktree", "remove", ...(options.force ? ["--force"] : []), lanePath], { cwd: repoRoot });
 }
 
 export function pruneWorktrees(repoRoot: string): void {
@@ -130,7 +130,7 @@ interface WorktreeEntry {
   path: string;
   // The checked-out branch, or `null` when detached.
   branch: string | null;
-  // The folder was deleted by hand (not via `lane remove`); git keeps the record until pruned.
+  // The folder was deleted by hand (not via `lanes remove`); git keeps the record until pruned.
   prunable: boolean;
 }
 
@@ -193,8 +193,8 @@ export function deleteLocalBranch(repoRoot: string, branchName: string): { delet
   }
 }
 
-// What makes a base folder unfit to branch a task from: work that exists only in that
-// folder. Being *behind* `ref` does not count -- the rebase that runs before a task is
+// What makes a base folder unfit to branch a lane from: work that exists only in that
+// folder. Being *behind* `ref` does not count -- the rebase that runs before a lane is
 // created is exactly what fixes that -- and neither do untracked files, which the copy
 // step leaves in the base. So only uncommitted changes to tracked files and commits that
 // never reached `ref` are collected here.
@@ -233,7 +233,7 @@ export function fetchRemoteBranch(repoRoot: string, branchName: string): boolean
 const execFileAsync = promisify(execFile);
 
 // The subject and commit time of a worktree's HEAD, or `null` when it has no commits or
-// git cannot say. Asynchronous, so the task list can ask every task at once.
+// git cannot say. Asynchronous, so the lane list can ask every lane at once.
 export async function lastCommit(
   worktreePath: string
 ): Promise<{ subject: string | null; committedAtMs: number } | null> {

@@ -1,7 +1,7 @@
-// Warp as a lane plugin: `lane warp tab` opens a task's folders as Warp tabs. See
-// plugins/README.md for what lane asks of a plugin.
+// Warp as a lanes plugin: `lanes warp tab` opens a lane's folders as Warp tabs. See
+// plugins/README.md for what lanes asks of a plugin.
 import fs from "node:fs";
-import type { Asker, DoctorLine, Plugin } from "lane-plugin-api";
+import type { Asker, DoctorLine, Plugin } from "lanes-plugin-api";
 import { closeCurrentWarpTab, isWarpInstalled } from "./app.js";
 import {
   WARP_COLORS,
@@ -16,7 +16,7 @@ import { shellSplit } from "./support.js";
 
 function specOf(words: string[]): WarpTabSpec {
   if (words[0] !== "tab") {
-    throw new Error(`only \`lane warp tab\` can be used here, not \`lane warp ${words[0] ?? ""}\`.`);
+    throw new Error(`only \`lanes warp tab\` can be used here, not \`lanes warp ${words[0] ?? ""}\`.`);
   }
   return parseTabWords(words.slice(1));
 }
@@ -42,7 +42,7 @@ function validateWith(check: () => unknown): string | null {
 
 const NONE = "none";
 
-// The tab's questions for `lane init`. Flags without a question (--setup, --group,
+// The tab's questions for `lanes init`. Flags without a question (--setup, --group,
 // --new-window) are kept from the line being edited.
 async function promptTab(ask: Asker, existing?: string[]): Promise<string[]> {
   let current: WarpTabSpec | undefined;
@@ -56,7 +56,7 @@ async function promptTab(ask: Asker, existing?: string[]): Promise<string[]> {
     ? await ask.validated("Tab title", current.title, validateTitle)
     : await ask.required("Tab title (e.g. Agent)", validateTitle);
   const tabPath = await ask.validated(
-    "Folder to open (relative to the task folder, '.' for the task root)",
+    "Folder to open (relative to the lane folder, '.' for the lane root)",
     current?.path ?? ".",
     (value) => validateWith(() => parseTabWords([title, "--path", value]))
   );
@@ -71,7 +71,7 @@ async function promptTab(ask: Asker, existing?: string[]): Promise<string[]> {
     group: current?.group ?? false,
     newWindow: current?.newWindow ?? false
   });
-  // `lane warp tab …` back to the words after `lane warp`.
+  // `lanes warp tab …` back to the words after `lanes warp`.
   return shellSplit(line).slice(2);
 }
 
@@ -85,11 +85,11 @@ const warpPlugin: Plugin = {
     });
     warp
       .command("flush", { hidden: true })
-      .description("Open the tabs staged by `lane warp tab` while lane ran a task's commands")
+      .description("Open the tabs staged by `lanes warp tab` while a lane's commands ran")
       .action(() => runFlushCommand());
     warp
       .command("doctor")
-      .description("Check that Warp is installed and lane can write its tab configs")
+      .description("Check that Warp is installed and lanes can write its tab configs")
       .action(() => {
         let failed = false;
         for (const line of warpPlugin.doctor()) {

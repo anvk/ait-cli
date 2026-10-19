@@ -1,20 +1,20 @@
-// What is installed: `~/.lane/plugins.json` lists the plugins, `~/.lane/plugins/<name>` links
-// to each one's folder, and git clones live under `~/.lane/plugins/.repos/`.
+// What is installed: `~/.lanes/plugins.json` lists the plugins, `~/.lanes/plugins/<name>` links
+// to each one's folder, and git clones live under `~/.lanes/plugins/.repos/`.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 export type PluginKind =
-  // A folder on this machine, linked as is and never updated by lane.
+  // A folder on this machine, linked as is and never updated by lanes.
   | "path"
-  // Cloned from a git URL into .repos; `lane plugin update` and self-update pull it.
+  // Cloned from a git URL into .repos; `lanes plugin update` and self-update pull it.
   | "git"
-  // Lives in lane's own checkout (the URL was lane's origin); moves when lane updates.
-  | "lane";
+  // Lives in the lanes checkout (the URL was the lanes origin); moves when lanes updates.
+  | "lanes";
 
 export interface InstalledPlugin {
   name: string;
-  // What `lane plugin install` was given.
+  // What `lanes plugin install` was given.
   source: string;
   kind: PluginKind;
   // The plugin package folder (holds package.json).
@@ -28,7 +28,7 @@ interface PluginsFile {
 }
 
 export function pluginsRoot(): string {
-  return path.join(os.homedir(), ".lane", "plugins");
+  return path.join(os.homedir(), ".lanes", "plugins");
 }
 
 export function reposRoot(): string {
@@ -36,7 +36,7 @@ export function reposRoot(): string {
 }
 
 function pluginsFile(): string {
-  return path.join(os.homedir(), ".lane", "plugins.json");
+  return path.join(os.homedir(), ".lanes", "plugins.json");
 }
 
 export function readInstalled(): InstalledPlugin[] {
@@ -55,12 +55,12 @@ export function writeInstalled(plugins: InstalledPlugin[]): void {
   fs.writeFileSync(file, `${JSON.stringify({ plugins: sorted } satisfies PluginsFile, null, 2)}\n`, "utf8");
 }
 
-// The symlink lane keeps per plugin, so `~/.lane/plugins/<name>` is always the plugin folder.
+// The symlink lanes keeps per plugin, so `~/.lanes/plugins/<name>` is always the plugin folder.
 export function pluginLink(name: string): string {
   return path.join(pluginsRoot(), name);
 }
 
-export function pluginPackage(dir: string): { name?: string; main?: string; lane?: { name?: unknown; api?: unknown }; scripts?: Record<string, string> } {
+export function pluginPackage(dir: string): { name?: string; main?: string; lanes?: { name?: unknown; api?: unknown }; scripts?: Record<string, string> } {
   return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as ReturnType<typeof pluginPackage>;
 }
 

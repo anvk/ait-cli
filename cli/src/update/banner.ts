@@ -26,8 +26,8 @@ export function versionBanner(): VersionBanner {
     const version = describeVersion(info);
     cached = {
       candidates: pending
-        ? [`lane ${version} · update on next start`, "update on next start", "update ready"]
-        : [`lane ${version}`, version],
+        ? [`lanes ${version} · update on next start`, "update on next start", "update ready"]
+        : [`lanes ${version}`, version],
       pending
     };
   } catch {

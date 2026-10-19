@@ -7,7 +7,7 @@ import {
   DEFAULT_BASE,
   DEFAULT_BASE_REF,
   DEFAULT_CONFIG,
-  DEFAULT_TASKS_DIR,
+  DEFAULT_LANES_DIR,
   getConfigPath,
   listLabel,
   normalizeConfig,
@@ -18,21 +18,21 @@ import {
 } from "../core/config.js";
 import { ensurePlugins } from "../plugins/ensure.js";
 import { installedPlugins, validateCommandLine } from "../plugins/registry.js";
-import { laneWords } from "../hooks/run.js";
+import { lanesWords } from "../hooks/run.js";
 import { shellJoin } from "../hooks/shell.js";
 import { loadCommandsFromSource } from "../hooks/source.js";
 import { DEFAULT_TEMPLATE } from "../hooks/templates.js";
-import { COMMAND_LISTS, type CommandList, type Plugin, type TaskCommands } from "../plugins/types.js";
-import type { BaseConfig, LaneConfig } from "../core/types.js";
+import { COMMAND_LISTS, type CommandList, type Plugin, type LaneCommands } from "../plugins/types.js";
+import type { BaseConfig, LanesConfig } from "../core/types.js";
 import { errorMessage } from "../core/util.js";
 import { NONE, Rewind, Wizard } from "./wizard.js";
 
 const CLEAR_SCREEN = "\x1b[2J\x1b[H";
 
-// Re-running `lane init` starts from the saved answers, so a workspace can be adjusted
+// Re-running `lanes init` starts from the saved answers, so a workspace can be adjusted
 // (another base, a different tab list) without editing the JSON by hand. A config that
 // no longer parses is treated as absent and the defaults are offered instead.
-function loadExistingConfig(repoRoot: string): LaneConfig | null {
+function loadExistingConfig(repoRoot: string): LanesConfig | null {
   if (!fs.existsSync(getConfigPath(repoRoot))) {
     return null;
   }
@@ -94,36 +94,36 @@ export async function interactiveInit(repoRoot: string, options: InitOptions = {
 async function askAll(
   wizard: Wizard,
   configDir: string,
-  existing: LaneConfig | null,
+  existing: LanesConfig | null,
   folderCandidates: string[],
   template: string | undefined
-): Promise<LaneConfig> {
-  const taskPrefix = await wizard.validated(
-    "Task prefix (included literally)",
-    existing?.taskPrefix ?? DEFAULT_CONFIG.taskPrefix,
-    (value) => (value.trim() ? null : "The task prefix cannot be empty.")
+): Promise<LanesConfig> {
+  // Optional: without one a lane is named by its id (`1437`); with `ABC-` it is `ABC-1437`.
+  const lanePrefix = await wizard.optional(
+    "Lane name prefix (optional, e.g. ABC- for ABC-1437)",
+    existing?.lanePrefix ?? DEFAULT_CONFIG.lanePrefix
   );
   const branchPrefix = await wizard.optional(
     "Branch prefix (optional, e.g. alex/)",
     existing?.branchPrefix ?? DEFAULT_CONFIG.branchPrefix
   );
-  // The prefix is glued to the task name as-is, so `alex` (no slash) yields `alexLANE-1437`.
+  // The prefix is glued to the lane name as-is, so `alex` (no slash) yields `alex1437`.
   if (branchPrefix && !/[\/_-]$/.test(branchPrefix)) {
     console.log(
       pc.yellow(
-        `Branch prefix '${branchPrefix}' has no trailing separator, so branches will be named like '${branchPrefix}${taskPrefix}1437'.`
+        `Branch prefix '${branchPrefix}' has no trailing separator, so branches will be named like '${branchPrefix}${lanePrefix}1437'.`
       )
     );
   }
-  const oldTaskDays = await wizard.positiveInt(
-    "Days before a task is considered old in task listings",
-    existing?.oldTaskDays ?? DEFAULT_CONFIG.oldTaskDays
+  const oldLaneDays = await wizard.positiveInt(
+    "Days before a lane is considered old in listings",
+    existing?.oldLaneDays ?? DEFAULT_CONFIG.oldLaneDays
   );
 
   // A fresh workspace gets base suggestions from its folders; command lists are per base.
   const { bases, plugins } = await promptBases(wizard, configDir, existing?.bases ?? [], folderCandidates, template);
 
-  const config: LaneConfig = { taskPrefix, branchPrefix, oldTaskDays, bases };
+  const config: LanesConfig = { lanePrefix, branchPrefix, oldLaneDays, bases };
   const allPlugins = { ...existing?.plugins, ...plugins };
   if (Object.keys(allPlugins).length > 0) {
     config.plugins = allPlugins;
@@ -138,15 +138,15 @@ async function askAll(
   return config;
 }
 
-function printSummary(config: LaneConfig): void {
+function printSummary(config: LanesConfig): void {
   console.log("");
   console.log(pc.cyan("Review"));
-  console.log(`  Task prefix:    ${config.taskPrefix}`);
+  console.log(`  Lane prefix:    ${config.lanePrefix || pc.dim("(none)")}`);
   console.log(`  Branch prefix:  ${config.branchPrefix || pc.dim("(none)")}`);
-  console.log(`  Old task days:  ${config.oldTaskDays}`);
+  console.log(`  Old lane days:  ${config.oldLaneDays}`);
   for (const base of config.bases) {
     console.log("");
-    console.log(`  Base ${pc.bold(base.name)}: ${base.folder} · ${base.ref} · ${base.tasksDir}`);
+    console.log(`  Base ${pc.bold(base.name)}: ${base.folder} · ${base.ref} · ${base.lanesDir}`);
     const source = base.template ? pc.dim(` (from ${base.template})`) : "";
     printLists(resolveBaseCommands(config, base), "    ", source);
   }
@@ -154,7 +154,7 @@ function printSummary(config: LaneConfig): void {
 }
 
 // `open:` and its lines, then `create:` and `remove:` when they have any.
-function printLists(lists: Partial<TaskCommands>, indent: string, note = ""): void {
+function printLists(lists: Partial<LaneCommands>, indent: string, note = ""): void {
   for (const list of COMMAND_LISTS) {
     const lines = lists[list] ?? [];
     if (lines.length === 0 && list !== "open") {
@@ -178,7 +178,7 @@ async function promptBases(
   template: string | undefined
 ): Promise<{ bases: BaseConfig[]; plugins: Record<string, string> }> {
   console.log("");
-  console.log(pc.cyan("Base repositories: each is a git clone that tasks are created from."));
+  console.log(pc.cyan("Base repositories: each is a git clone that lanes are created from."));
 
   // One base at a time, then "add another?", so the count never has to be known up
   // front. On a re-run the answer defaults to yes while saved bases remain.
@@ -199,7 +199,7 @@ async function promptBases(
 
     const usedNames = new Set(bases.map((base) => base.name));
     const name = await wizard.validated(
-      "Short name for this base (used in task paths and tab names)",
+      "Short name for this base (used in lane paths and tab names)",
       existingBase?.name ?? suggestBaseName(folder, usedNames),
       (value) => {
         if (usedNames.has(value)) {
@@ -207,26 +207,26 @@ async function promptBases(
         }
         return validateWith(() =>
           normalizeConfig({
-            bases: [{ name: value, folder, ref: DEFAULT_BASE_REF, tasksDir: "x", open: [] }]
+            bases: [{ name: value, folder, ref: DEFAULT_BASE_REF, lanesDir: "x", open: [] }]
           })
         );
       }
     );
 
-    const ref = await wizard.validated("Base git ref for new tasks", existingBase?.ref ?? DEFAULT_BASE_REF, () => null);
+    const ref = await wizard.validated("Base git ref for new lanes", existingBase?.ref ?? DEFAULT_BASE_REF, () => null);
 
-    // Always per-base (`tasks/web`), since a plain `tasks` would block adding a second
+    // Always per-base (`lanes/web`), since a plain `lanes` would block adding a second
     // base later without moving folders around.
-    const tasksDirDefault = existingBase?.tasksDir ?? path.join(DEFAULT_TASKS_DIR, name);
-    const tasksDir = await wizard.validated("Tasks directory (relative to this directory)", tasksDirDefault, (value) =>
+    const lanesDirDefault = existingBase?.lanesDir ?? path.join(DEFAULT_LANES_DIR, name);
+    const lanesDir = await wizard.validated("Lanes directory (relative to this directory)", lanesDirDefault, (value) =>
       validateWith(() =>
         normalizeConfig({
-          bases: [...bases, { name, folder, ref, tasksDir: value }].map((base) => ({ ...base, open: base.open ?? [] }))
+          bases: [...bases, { name, folder, ref, lanesDir: value }].map((base) => ({ ...base, open: base.open ?? [] }))
         })
       )
     );
 
-    const base: BaseConfig = { name, folder, ref, tasksDir };
+    const base: BaseConfig = { name, folder, ref, lanesDir };
     // The branch prefix override is only editable in the JSON, so a re-run keeps it.
     if (existingBase?.branchPrefix != null) {
       base.branchPrefix = existingBase.branchPrefix;
@@ -266,7 +266,7 @@ async function promptBaseCommands(
   template: string | undefined
 ): Promise<CommandsAnswer> {
   console.log("");
-  console.log(pc.cyan(`Commands run for tasks in base '${base.name}'`));
+  console.log(pc.cyan(`Commands run for lanes in base '${base.name}'`));
 
   // Copying carries the source along, so both bases keep following the same document.
   const copyFrom = await promptCopyFrom(wizard, existingBase, earlier);
@@ -274,7 +274,7 @@ async function promptBaseCommands(
     return { lists: copyLists(copyFrom), source: copyFrom.template };
   }
 
-  // The template given to `lane init`, else the one the base already follows. Lists that
+  // The template given to `lanes init`, else the one the base already follows. Lists that
   // were typed in by hand are kept by default rather than replaced by a template.
   const suggested = template ?? existingBase?.template ?? (existingBase?.open ? NONE : DEFAULT_TEMPLATE);
   while (true) {
@@ -300,7 +300,7 @@ async function promptBaseCommands(
     printLists(lists, "  ");
     if (await wizard.yesNo(`Use these ${count} command(s)?`, true)) {
       // The document may need a plugin that is not installed yet; offer it now rather
-      // than at the first task.
+      // than at the first lane.
       if (lists.plugins) {
         await ensurePlugins({ ...DEFAULT_CONFIG, bases: [{ ...base, open: lists.open ?? [] }], plugins: lists.plugins });
       }
@@ -309,8 +309,8 @@ async function promptBaseCommands(
   }
 }
 
-function copyLists(from: BaseConfig): Partial<TaskCommands> {
-  const lists: Partial<TaskCommands> = {};
+function copyLists(from: BaseConfig): Partial<LaneCommands> {
+  const lists: Partial<LaneCommands> = {};
   for (const list of COMMAND_LISTS) {
     if (from[list]) {
       lists[list] = [...from[list]];
@@ -348,8 +348,8 @@ async function promptCopyFrom(
   return answer === NONE ? null : (withLists.find((base) => base.name === answer) ?? null);
 }
 
-async function promptCommandLists(wizard: Wizard, existingBase: BaseConfig | undefined): Promise<Partial<TaskCommands>> {
-  const lists: Partial<TaskCommands> = { open: await promptOpenList(wizard, existingBase?.open ?? []) };
+async function promptCommandLists(wizard: Wizard, existingBase: BaseConfig | undefined): Promise<Partial<LaneCommands>> {
+  const lists: Partial<LaneCommands> = { open: await promptOpenList(wizard, existingBase?.open ?? []) };
   for (const list of ["create", "remove"] as const) {
     const lines = await promptLineList(wizard, list, existingBase?.[list] ?? []);
     if (lines.length > 0) {
@@ -368,7 +368,7 @@ async function promptOpenList(wizard: Wizard, current: string[]): Promise<string
   const lines: string[] = [];
   for (let index = 0; ; index += 1) {
     const existingLine: string | undefined = current[index];
-    const existingWords = existingLine ? laneWords(existingLine) : null;
+    const existingWords = existingLine ? lanesWords(existingLine) : null;
     const existingPlugin = askers.find((plugin) => plugin.name === existingWords?.[0]);
     console.log("");
     console.log(pc.cyan(`Entry ${index + 1}`));
@@ -383,8 +383,8 @@ async function promptOpenList(wizard: Wizard, current: string[]): Promise<string
       plugin = askers.find((candidate) => candidate.name === kind);
     }
     const line = plugin
-      ? shellJoin(["lane", plugin.name, ...(await plugin.prompt!(wizard, existingPlugin === plugin ? existingWords!.slice(1) : undefined))])
-      : await wizard.validated("Command to run in the task folder (e.g. cursor .)", existingLine, (value) =>
+      ? shellJoin(["lanes", plugin.name, ...(await plugin.prompt!(wizard, existingPlugin === plugin ? existingWords!.slice(1) : undefined))])
+      : await wizard.validated("Command to run in the lane folder (e.g. cursor .)", existingLine, (value) =>
           validateWith(() => validateCommandLine(value, "command"))
         );
     lines.push(line);

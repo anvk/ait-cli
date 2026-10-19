@@ -1,4 +1,4 @@
-// Small helpers the plugin needs and cannot import from lane.
+// Small helpers the plugin needs and cannot import from lanes.
 import { spawnSync, type SpawnSyncOptionsWithBufferEncoding } from "node:child_process";
 import fs from "node:fs";
 
@@ -38,7 +38,7 @@ export function shellJoin(words: string[]): string {
   return words.map(shellQuote).join(" ");
 }
 
-// Splits a command line the way a POSIX shell would, far enough for lane's config lines:
+// Splits a command line the way a POSIX shell would, far enough for the lanes config lines:
 // single quotes, double quotes with `\"` and `\\`, backslash escapes outside quotes.
 export function shellSplit(line: string): string[] {
   const words: string[] = [];

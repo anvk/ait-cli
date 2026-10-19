@@ -1,4 +1,4 @@
-// `lane warp tab`: one Warp tab as a command line. Run by lane while opening a task, the
+// `lanes warp tab`: one Warp tab as a command line. Run by lanes while opening a lane, the
 // tabs of a list are staged and opened together at the end (so they share a window or a
 // group); run from a shell, it opens one tab right away.
 import fs from "node:fs";
@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import pc from "picocolors";
-import { ENV } from "lane-plugin-api";
+import { ENV } from "lanes-plugin-api";
 import { isDirectory, run, shellJoin } from "./support.js";
 import { WARP_TAB_INTERVAL_MS, ensureWarpRunning } from "./app.js";
 import {
@@ -17,7 +17,7 @@ import {
   getLaunchConfigName,
   getLaunchConfigsDir,
   getTabConfigsDir,
-  getTaskConfigPrefix,
+  getLaneConfigPrefix,
   removeTabConfigs,
   tabConfigName,
   type ResolvedWarpTab,
@@ -26,13 +26,13 @@ import {
 
 export interface WarpTabSpec {
   title: string;
-  // Folder relative to the task root.
+  // Folder relative to the lane root.
   path: string;
   color?: WarpColor;
   command?: string;
-  // Runs in this tab only right after the task was created, when the setup prompt was accepted.
+  // Runs in this tab only right after the lane was created, when the setup prompt was accepted.
   setup?: string;
-  // Open the task's tabs as one tab group named after the task (always a new window).
+  // Open the lane's tabs as one tab group named after the lane (always a new window).
   group: boolean;
   newWindow: boolean;
 }
@@ -48,30 +48,30 @@ function parseColor(value: string): WarpColor {
 function parsePath(value: string): string {
   const rawPath = value.trim();
   if (!rawPath) {
-    throw new InvalidArgumentError('use "." for the task root.');
+    throw new InvalidArgumentError('use "." for the lane root.');
   }
   if (path.isAbsolute(rawPath) || rawPath.startsWith("~")) {
-    throw new InvalidArgumentError("must be relative to the task folder.");
+    throw new InvalidArgumentError("must be relative to the lane folder.");
   }
   const normalized = path.normalize(rawPath).replace(/(.)\/+$/, "$1");
   if (normalized === ".." || normalized.startsWith(`..${path.sep}`)) {
-    throw new InvalidArgumentError("must stay inside the task folder.");
+    throw new InvalidArgumentError("must stay inside the lane folder.");
   }
   return normalized;
 }
 
-// The command's definition, applied both to lane's `lane warp tab` and to a throwaway
+// The command's definition, applied both to the real `lanes warp tab` and to a throwaway
 // Command used to validate config lines.
 export function configureTabCommand(command: Command): Command {
   return command
     .allowExcessArguments(false)
-    .description("Open a Warp tab in the task folder (staged until the list ends when run by lane)")
-    .argument("<title>", "Pane name; the task name is appended")
-    .option("--path <dir>", "Folder to open, relative to the task root", parsePath, ".")
+    .description("Open a Warp tab in the lane folder (staged until the list ends when run by lanes)")
+    .argument("<title>", "Pane name; the lane name is appended")
+    .option("--path <dir>", "Folder to open, relative to the lane root", parsePath, ".")
     .option("--color <color>", `One of ${WARP_COLORS.join(", ")}`, parseColor)
     .option("--command <cmd>", "Run when the tab opens, e.g. 'claude --continue'")
-    .option("--setup <cmd>", "Run once in this tab right after the task is created, if accepted")
-    .option("--group", "Open the task's tabs as a tab group named after the task (always a new window)")
+    .option("--setup <cmd>", "Run once in this tab right after the lane is created, if accepted")
+    .option("--group", "Open the lane's tabs as a tab group named after the lane (always a new window)")
     .option("--new-window", "Open the tabs in a new Warp window");
 }
 
@@ -106,7 +106,7 @@ function toSpec(title: string, options: TabOptions): WarpTabSpec {
   return spec;
 }
 
-// Parses the words after `lane warp tab` without touching the process: a bad flag or
+// Parses the words after `lanes warp tab` without touching the process: a bad flag or
 // color throws instead of printing and exiting, so configs can be checked when read.
 export function parseTabWords(words: string[]): WarpTabSpec {
   let spec: WarpTabSpec | undefined;
@@ -132,7 +132,7 @@ export function parseTabWords(words: string[]): WarpTabSpec {
 
 // The command line for a spec, as written to a config.
 export function tabLine(spec: WarpTabSpec): string {
-  const words = ["lane", "warp", "tab", spec.title];
+  const words = ["lanes", "warp", "tab", spec.title];
   if (spec.path !== ".") {
     words.push("--path", spec.path);
   }
@@ -162,33 +162,33 @@ interface StagedTab extends ResolvedWarpTab {
 }
 
 interface TabContext {
-  taskPath: string;
+  lanePath: string;
   key: string;
   label: string;
 }
 
-// lane describes the task through the environment; from a plain shell the current folder
+// lanes describes the lane through the environment; from a plain shell the current folder
 // stands in for it.
 function tabContext(): TabContext {
   const cwd = process.cwd();
   return {
-    taskPath: process.env[ENV.taskPath] || cwd,
-    key: process.env[ENV.taskKey] || path.basename(cwd),
-    label: process.env[ENV.taskLabel] || process.env[ENV.task] || path.basename(cwd)
+    lanePath: process.env[ENV.lanePath] || cwd,
+    key: process.env[ENV.laneKey] || path.basename(cwd),
+    label: process.env[ENV.laneLabel] || process.env[ENV.lane] || path.basename(cwd)
   };
 }
 
-export function resolveTabFolder(taskPath: string, relative: string, title: string): string {
-  const candidate = path.resolve(taskPath, relative);
+export function resolveTabFolder(lanePath: string, relative: string, title: string): string {
+  const candidate = path.resolve(lanePath, relative);
   if (isDirectory(candidate)) {
     return candidate;
   }
-  console.log(pc.yellow(`Tab '${title}' folder does not exist: ${candidate}\nUsing task root instead.`));
-  return taskPath;
+  console.log(pc.yellow(`Tab '${title}' folder does not exist: ${candidate}\nUsing lane root instead.`));
+  return lanePath;
 }
 
 function stageTab(spec: WarpTabSpec, ctx: TabContext, index: number): StagedTab {
-  const cwd = resolveTabFolder(ctx.taskPath, spec.path, spec.title);
+  const cwd = resolveTabFolder(ctx.lanePath, spec.path, spec.title);
   const command = spec.command ? withoutContinueIfNoClaudeSession(spec.command, cwd, spec.title) : undefined;
   const setup = process.env[ENV.runSetup] ? spec.setup : undefined;
   // Tab configs are rewritten on every open, so the setup command runs this once only.
@@ -216,19 +216,19 @@ export function runTabCommand(spec: WarpTabSpec): void {
     const staged = readStaged(stagedFile);
     staged.push(stageTab(spec, ctx, staged.length));
     fs.writeFileSync(stagedFile, JSON.stringify(staged), "utf8");
-    fs.writeFileSync(path.join(afterDir, FLUSH_FILE), "lane warp flush\n", "utf8");
+    fs.writeFileSync(path.join(afterDir, FLUSH_FILE), "lanes warp flush\n", "utf8");
     return;
   }
 
   // Standalone: one more tab for whatever folder this is, after any already written.
   const tabConfigsDir = getTabConfigsDir();
   fs.mkdirSync(tabConfigsDir, { recursive: true });
-  const prefix = getTaskConfigPrefix(ctx.key);
+  const prefix = getLaneConfigPrefix(ctx.key);
   const index = fs.readdirSync(tabConfigsDir).filter((entry) => entry.startsWith(prefix)).length;
   const tab = stageTab(spec, ctx, index);
   fs.writeFileSync(path.join(tabConfigsDir, `${tab.configName}.toml`), buildTabConfigToml(tab), "utf8");
   if (spec.group) {
-    console.log(pc.yellow("--group only applies when lane opens a task's tabs together; opening a plain tab."));
+    console.log(pc.yellow("--group only applies when a lane's tabs are opened together; opening a plain tab."));
   }
   ensureWarpRunning();
   run("open", [`warp://tab_config/${encodeURIComponent(tab.configName)}${spec.newWindow ? "?new_window=true" : ""}`]);
@@ -243,7 +243,7 @@ function readStaged(file: string): StagedTab[] {
   }
 }
 
-// `lane warp flush`: writes the staged tabs' files and opens them together.
+// `lanes warp flush`: writes the staged tabs' files and opens them together.
 export function runFlushCommand(): void {
   const afterDir = process.env[ENV.afterDir];
   const tabs = afterDir ? readStaged(path.join(afterDir, STAGED_FILE)) : [];
@@ -295,7 +295,7 @@ function sleepSync(milliseconds: number): void {
 }
 
 // `claude --continue` exits with "No conversation found to continue" in a folder Claude
-// Code has never run in, which is every brand-new task. Claude Code keeps one session
+// Code has never run in, which is every brand-new lane. Claude Code keeps one session
 // folder per working directory, so the flag is dropped when that folder has no sessions.
 const CONTINUE_FLAGS = new Set(["--continue", "-c"]);
 

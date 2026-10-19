@@ -2,8 +2,8 @@ import type readline from "node:readline";
 import pc from "picocolors";
 import { paintBase, paintUpdate } from "../core/format.js";
 import { versionBanner } from "../update/banner.js";
-import { rowWidths, taskRowSegments, type TaskDisplayItem } from "./tasklist.js";
-import { toTaskName } from "../core/tasks.js";
+import { rowWidths, laneRowSegments, type LaneDisplayItem } from "./lanelist.js";
+import { toLaneName } from "../core/lanes.js";
 import {
   baseSwitcherLine,
   charLength,
@@ -21,13 +21,13 @@ import {
 } from "./tui.js";
 import { cycle } from "../core/util.js";
 
-export interface PickerItem extends TaskDisplayItem {
+export interface PickerItem extends LaneDisplayItem {
   isOld: boolean;
 }
 
 export type PickerResult =
   | { kind: "open"; item: PickerItem }
-  | { kind: "create"; taskId: string; baseName: string }
+  | { kind: "create"; laneId: string; baseName: string }
   | { kind: "remove"; item: PickerItem }
   // `baseName` is the base the branch search starts on; `query` is what was typed in
   // the search field, handed on as the branch search text.
@@ -36,21 +36,21 @@ export type PickerResult =
 
 export interface PickerOptions {
   items: PickerItem[];
-  taskPrefix: string;
-  oldTaskDays: number;
+  lanePrefix: string;
+  oldLaneDays: number;
   emptyHint: string;
   // Names of the configured bases, in config order. With more than one, the list
-  // shows a base filter row and a `[base]` tag per task.
+  // shows a base filter row and a `[base]` tag per lane.
   bases: string[];
   // Base the filter starts on; `undefined` means "All".
   initialBase?: string;
 }
 
 // Focus starts in the search field; `down` moves into the list, where row 0 is
-// always "Create new task", row 1 "Check out a branch" and the rows from
-// FIRST_TASK_ROW on are the filtered tasks. The create prompt is a third mode
+// always "Create new lane", row 1 "Check out a branch" and the rows from
+// FIRST_LANE_ROW on are the filtered lanes. The create prompt is a third mode
 // inside the same raw-mode loop, so `esc` can return to the list instead of
-// leaving the picker. `baseName` is the base the new task is created in; it only
+// leaving the picker. `baseName` is the base the new lane is created in; it only
 // matters (and is only shown) with several bases.
 type Focus =
   | { area: "search" }
@@ -59,33 +59,33 @@ type Focus =
 
 const CREATE_ROW = 0;
 const CHECKOUT_ROW = 1;
-const FIRST_TASK_ROW = 2;
+const FIRST_LANE_ROW = 2;
 
 function matchesQuery(item: PickerItem, query: string): boolean {
   if (!query) {
     return true;
   }
   const needle = query.toLowerCase();
-  if (item.taskName.toLowerCase().includes(needle)) {
+  if (item.laneName.toLowerCase().includes(needle)) {
     return true;
   }
   return item.lastCommitSubject?.toLowerCase().includes(needle) ?? false;
 }
 
-function resolvedNameLabel(taskPrefix: string, raw: string): string | null {
+function resolvedNameLabel(lanePrefix: string, raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) {
     return null;
   }
   try {
-    return toTaskName(taskPrefix, trimmed);
+    return toLaneName(lanePrefix, trimmed);
   } catch {
     return null;
   }
 }
 
-export function pickTask(options: PickerOptions): Promise<PickerResult> {
-  const { items, taskPrefix, oldTaskDays, emptyHint, bases } = options;
+export function pickLane(options: PickerOptions): Promise<PickerResult> {
+  const { items, lanePrefix, oldLaneDays, emptyHint, bases } = options;
   const multiBase = bases.length > 1;
 
   let query = "";
@@ -119,15 +119,15 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
   }
 
   function rowCount(): number {
-    return filteredItems().length + FIRST_TASK_ROW;
+    return filteredItems().length + FIRST_LANE_ROW;
   }
 
   function renderCreate(draft: string, baseName: string): string[] {
     const width = frameWidth();
-    const resolved = resolvedNameLabel(taskPrefix, draft);
+    const resolved = resolvedNameLabel(lanePrefix, draft);
     const header = paintLine(
       [
-        { text: "  New task id: ", paint: pc.cyan },
+        { text: "  New lane id: ", paint: pc.cyan },
         { text: draft, paint: pc.bold },
         { text: "▏", paint: pc.dim },
         { text: resolved ? `   → will create ${resolved}` : "", paint: pc.dim }
@@ -168,7 +168,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
       pc.cyan,
       query,
       focus.area === "search",
-      `${filtered.length}/${items.length} tasks`,
+      `${filtered.length}/${items.length} lanes`,
       width
     );
 
@@ -178,7 +178,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
     // section separator that only takes up a line.
     const entries: { text: string; rowIndex: number | null }[] = [];
 
-    const createName = resolvedNameLabel(taskPrefix, query);
+    const createName = resolvedNameLabel(lanePrefix, query);
     const createMarker = highlighted === CREATE_ROW ? "▸ " : "  ";
     const createPaint: Paint = highlighted === CREATE_ROW ? (text) => pc.bold(pc.green(text)) : pc.green;
     entries.push({
@@ -186,7 +186,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
       text: paintLine(
         [
           { text: `  ${createMarker}`, paint: pc.green },
-          { text: "+ Create new task", paint: createPaint },
+          { text: "+ Create new lane", paint: createPaint },
           { text: createName ? `  ${createName}` : "", paint: pc.dim }
         ],
         width
@@ -214,7 +214,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
       const section = item.isOld ? "old" : "recent";
       if (section !== currentSection) {
         currentSection = section;
-        const title = section === "old" ? `-- old (${oldTaskDays}+ days) --` : "-- recent --";
+        const title = section === "old" ? `-- old (${oldLaneDays}+ days) --` : "-- recent --";
         // A blank line ahead of each section keeps the list from reading as one block.
         entries.push({ rowIndex: null, text: "" });
         entries.push({
@@ -223,7 +223,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
         });
       }
 
-      const rowIndex = position + FIRST_TASK_ROW;
+      const rowIndex = position + FIRST_LANE_ROW;
       const active = rowIndex === highlighted;
       const emphasize: Paint = active ? pc.bold : (text) => text;
       entries.push({
@@ -231,7 +231,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
         text: paintLine(
           [
             { text: `  ${active ? "▸ " : "  "}${item.isOld ? "☠" : "*"} `, paint: emphasize },
-            ...taskRowSegments(item, item.isOld, widths, emphasize)
+            ...laneRowSegments(item, item.isOld, widths, emphasize)
           ],
           width
         )
@@ -243,7 +243,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
       entries.push({ rowIndex: null, text: paintLine([{ text: `    ${emptyHint}`, paint: pc.yellow }], width) });
     } else if (filtered.length === 0) {
       const scope = baseFilter === null ? "" : ` in base '${baseFilter}'`;
-      const message = query ? `No tasks match '${query}'${scope}.` : `No tasks${scope}.`;
+      const message = query ? `No lanes match '${query}'${scope}.` : `No lanes${scope}.`;
       entries.push({ rowIndex: null, text: "" });
       entries.push({
         rowIndex: null,
@@ -326,9 +326,9 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
         if (keys.escape) {
           focus = { area: "list", index: CREATE_ROW };
         } else if (keys.enter) {
-          const taskId = focus.draft.trim();
-          if (taskId) {
-            finish({ kind: "create", taskId, baseName: focus.baseName });
+          const laneId = focus.draft.trim();
+          if (laneId) {
+            finish({ kind: "create", laneId, baseName: focus.baseName });
             return;
           }
         } else if (switchBase) {
@@ -358,7 +358,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
           focus = { area: "list", index: CREATE_ROW };
         } else if (keys.enter) {
           // Only highlight the top match; opening takes a second ⏎ on a selected row.
-          focus = filteredItems().length > 0 ? { area: "list", index: FIRST_TASK_ROW } : startCreate(query);
+          focus = filteredItems().length > 0 ? { area: "list", index: FIRST_LANE_ROW } : startCreate(query);
         } else if (key.name === "backspace") {
           query = [...query].slice(0, -1).join("");
         } else if (isPrintable(str, key)) {
@@ -382,7 +382,7 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
           startCheckout();
           return;
         } else {
-          finish({ kind: "open", item: filteredItems()[index - FIRST_TASK_ROW] });
+          finish({ kind: "open", item: filteredItems()[index - FIRST_LANE_ROW] });
           return;
         }
       } else if (letter === "n") {
@@ -391,8 +391,8 @@ export function pickTask(options: PickerOptions): Promise<PickerResult> {
         startCheckout();
         return;
       } else if (letter === "d") {
-        if (index >= FIRST_TASK_ROW) {
-          finish({ kind: "remove", item: filteredItems()[index - FIRST_TASK_ROW] });
+        if (index >= FIRST_LANE_ROW) {
+          finish({ kind: "remove", item: filteredItems()[index - FIRST_LANE_ROW] });
           return;
         }
       } else if (key.name === "backspace") {

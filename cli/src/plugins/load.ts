@@ -1,8 +1,8 @@
 // Loads the installed plugins at startup. A plugin that fails to load never stops a
-// command; it is reported by doctor and `lane plugin list`.
+// command; it is reported by doctor and `lanes plugin list`.
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
-import { API_VERSION } from "lane-plugin-api";
+import { API_VERSION } from "lanes-plugin-api";
 import { errorMessage } from "../core/util.js";
 import { pluginEntry, readInstalled, type InstalledPlugin } from "./state.js";
 import type { Plugin } from "./types.js";
@@ -32,7 +32,7 @@ export async function importPlugin(dir: string, expectedName?: string): Promise<
     throw new Error(`${entry} does not export a plugin as its default export`);
   }
   if (plugin.api !== API_VERSION) {
-    throw new Error(`built against plugin API ${String(plugin.api)}, this lane speaks ${API_VERSION}; update the plugin or lane`);
+    throw new Error(`built against plugin API ${String(plugin.api)}, this version of lanes speaks ${API_VERSION}; update the plugin or lanes`);
   }
   if (typeof plugin.name !== "string" || !/^[a-z][a-z0-9-]*$/.test(plugin.name)) {
     throw new Error(`plugin name ${JSON.stringify(plugin.name)} must be lowercase letters, digits and dashes`);

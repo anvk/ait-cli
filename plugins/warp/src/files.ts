@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Leftover } from "lane-plugin-api";
+import type { Leftover } from "lanes-plugin-api";
 
 export const WARP_COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
 export type WarpColor = (typeof WARP_COLORS)[number];
@@ -29,20 +29,20 @@ export function sanitize(value: string): string {
 }
 
 export function getLaunchConfigName(key: string): string {
-  return `lane-${sanitize(key)}`;
+  return `lanes-${sanitize(key)}`;
 }
 
-export function getTaskConfigPrefix(key: string): string {
-  return `lane-${sanitize(key)}-`;
+export function getLaneConfigPrefix(key: string): string {
+  return `lanes-${sanitize(key)}-`;
 }
 
 export function tabConfigName(key: string, index: number, title: string): string {
-  return `${getTaskConfigPrefix(key)}${index}-${sanitize(title).toLowerCase()}`;
+  return `${getLaneConfigPrefix(key)}${index}-${sanitize(title).toLowerCase()}`;
 }
 
 export function removeTabConfigs(key: string): void {
   const tabConfigsDir = getTabConfigsDir();
-  const prefix = getTaskConfigPrefix(key);
+  const prefix = getLaneConfigPrefix(key);
   try {
     for (const entry of fs.readdirSync(tabConfigsDir)) {
       if (entry.startsWith(prefix) && entry.endsWith(".toml")) {
@@ -55,12 +55,12 @@ export function removeTabConfigs(key: string): void {
   fs.rmSync(path.join(getLaunchConfigsDir(), `${getLaunchConfigName(key)}.yaml`), { force: true });
 }
 
-// Tab configs are named `lane-<key>-<index>-<slug>.toml` and launch configs `lane-<key>.yaml`.
-// Anything whose <key> no longer matches an existing task is left over from a task that
-// was deleted outside `lane remove`, and Warp keeps listing it in its new-tab and launch
+// Tab configs are named `lanes-<key>-<index>-<slug>.toml` and launch configs `lanes-<key>.yaml`.
+// Anything whose <key> no longer matches an existing lane is left over from a lane that
+// was deleted outside `lanes remove`, and Warp keeps listing it in its new-tab and launch
 // configuration menus.
-const TAB_CONFIG_NAME = /^lane-(.+)-\d+-[^/]*\.toml$/;
-const LAUNCH_CONFIG_NAME = /^lane-(.+)\.yaml$/;
+const TAB_CONFIG_NAME = /^lanes-(.+)-\d+-[^/]*\.toml$/;
+const LAUNCH_CONFIG_NAME = /^lanes-(.+)\.yaml$/;
 
 export function findOrphanedTabConfigs(knownKeys: string[]): Leftover[] {
   const known = new Set(knownKeys.map(sanitize));
@@ -107,7 +107,7 @@ export function buildTabConfigToml(tab: ResolvedWarpTab): string {
   return `${lines.join("\n")}\n`;
 }
 
-// One window, every tab in group 0. The group takes the task name and the first tab
+// One window, every tab in group 0. The group takes the lane name and the first tab
 // color that is set, so the group header matches the tabs it holds.
 //
 // Tabs carry no `title`: Warp shows a single-pane tab under that pane's name, and the

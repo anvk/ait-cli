@@ -61,7 +61,7 @@ export function closeCurrentWarpTab(): boolean {
   return true;
 }
 
-// Every lane command is synchronous, so this blocks the thread instead of awaiting a timer.
+// Every lanes command is synchronous, so this blocks the thread instead of awaiting a timer.
 export function sleepSync(milliseconds: number): void {
   const buffer = new Int32Array(new SharedArrayBuffer(4));
   Atomics.wait(buffer, 0, 0, milliseconds);

@@ -4,17 +4,17 @@ import { checkoutBlockers, describeVersion, resolveInstall, settingBlockers } fr
 
 export function runUpdateCommand(options: { check?: boolean }): void {
   const info = resolveInstall();
-  console.log(`lane ${describeVersion(info)}`);
+  console.log(`lanes ${describeVersion(info)}`);
 
   if (!info.gitRoot) {
-    console.error(pc.red("lane is not running from a git checkout, so it cannot update itself."));
+    console.error(pc.red("lanes is not running from a git checkout, so it cannot update itself."));
     console.error(recoveryHint());
     process.exitCode = 1;
     return;
   }
   if (!info.managed) {
     console.error(
-      pc.yellow(`lane is linked from ${info.packageRoot}, which is a developer checkout, not the managed install.`)
+      pc.yellow(`lanes is linked from ${info.packageRoot}, which is a developer checkout, not the managed install.`)
     );
     console.error(pc.dim("Self-update stays off there. Build it yourself, or re-link the managed install."));
     process.exitCode = 1;

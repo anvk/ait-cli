@@ -1,4 +1,4 @@
-// Installing, updating and removing plugins: `lane plugin install|uninstall|update|list`.
+// Installing, updating and removing plugins: `lanes plugin install|uninstall|update|list`.
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -63,9 +63,9 @@ function normalizeGitUrl(url: string): string {
     .toLowerCase();
 }
 
-// lane's own repository, when it runs from a managed checkout: a plugin from the same URL
-// can use that checkout instead of a second clone, and then moves when lane updates.
-function laneCheckoutFor(url: string): string | null {
+// the lanes repository, when it runs from a managed checkout: a plugin from the same URL
+// can use that checkout instead of a second clone, and then moves when lanes updates.
+function lanesCheckoutFor(url: string): string | null {
   const paths = resolveInstallPaths();
   if (!paths.gitRoot || !paths.managed) {
     return null;
@@ -110,9 +110,9 @@ function declaredName(dir: string): string {
   } catch {
     throw new Error(`${dir} has no readable package.json.`);
   }
-  const name = pkg.lane?.name;
+  const name = pkg.lanes?.name;
   if (typeof name !== "string" || !/^[a-z][a-z0-9-]*$/.test(name)) {
-    throw new Error(`${dir}/package.json must declare "lane": { "name": "<plugin>", "api": 1 }.`);
+    throw new Error(`${dir}/package.json must declare "lanes": { "name": "<plugin>", "api": 1 }.`);
   }
   return name;
 }
@@ -134,11 +134,11 @@ export async function installPlugin(input: string): Promise<InstalledPlugin> {
   if (source.kind === "path") {
     dir = source.location;
     kind = "path";
-  } else if (laneCheckoutFor(source.location)) {
-    dir = path.join(laneCheckoutFor(source.location)!, source.subdir);
-    kind = "lane";
+  } else if (lanesCheckoutFor(source.location)) {
+    dir = path.join(lanesCheckoutFor(source.location)!, source.subdir);
+    kind = "lanes";
     if (!isDirectory(dir)) {
-      throw new Error(`lane's checkout has no folder ${source.subdir}.`);
+      throw new Error(`The lanes checkout has no folder ${source.subdir}.`);
     }
   } else {
     repo = path.join(reposRoot(), createHash("sha256").update(normalizeGitUrl(source.location)).digest("hex").slice(0, 12));
@@ -168,7 +168,7 @@ export async function installPlugin(input: string): Promise<InstalledPlugin> {
   const name = declaredName(dir);
   const existing = readInstalled().find((plugin) => plugin.name === name);
   if (existing && existing.source !== input.trim()) {
-    throw new Error(`A plugin named '${name}' is already installed from ${existing.source}. Run \`lane plugin uninstall ${name}\` first.`);
+    throw new Error(`A plugin named '${name}' is already installed from ${existing.source}. Run \`lanes plugin uninstall ${name}\` first.`);
   }
 
   console.log(pc.cyan(`Building plugin '${name}'...`));
@@ -198,7 +198,7 @@ export function uninstallPlugin(name: string): void {
   const installed = readInstalled();
   const record = installed.find((plugin) => plugin.name === name);
   if (!record) {
-    throw new Error(`No plugin named '${name}' is installed. See \`lane plugin list\`.`);
+    throw new Error(`No plugin named '${name}' is installed. See \`lanes plugin list\`.`);
   }
   fs.rmSync(pluginLink(name), { recursive: true, force: true });
   if (record.kind === "git" && record.repo && !installed.some((other) => other !== record && other.repo === record.repo)) {
@@ -209,21 +209,21 @@ export function uninstallPlugin(name: string): void {
 }
 
 export function describeKind(record: InstalledPlugin): string {
-  return { path: "linked folder", git: "git clone", lane: "in lane's checkout" }[record.kind];
+  return { path: "linked folder", git: "git clone", lanes: "in the lanes checkout" }[record.kind];
 }
 
-// The commit a plugin's folder is at, for `lane plugin list` and doctor.
+// The commit a plugin's folder is at, for `lanes plugin list` and doctor.
 export function pluginVersion(record: InstalledPlugin): string {
   const shown = git(record.dir, ["show", "-s", "--format=%cs %h", "HEAD"]);
   return shown.status === 0 && shown.stdout ? shown.stdout : "unknown";
 }
 
-// Pulls and rebuilds the plugins lane can update. Returns one line per plugin touched or
+// Pulls and rebuilds the plugins lanes can update. Returns one line per plugin touched or
 // failed; nothing for a plugin that was already current.
 export function updatePlugins(only?: string): string[] {
   const installed = readInstalled();
   if (only && !installed.some((plugin) => plugin.name === only)) {
-    throw new Error(`No plugin named '${only}' is installed. See \`lane plugin list\`.`);
+    throw new Error(`No plugin named '${only}' is installed. See \`lanes plugin list\`.`);
   }
   const notes: string[] = [];
   for (const record of installed) {
@@ -232,7 +232,7 @@ export function updatePlugins(only?: string): string[] {
     }
     if (record.kind === "path") {
       if (only) {
-        notes.push(`${record.name}: linked from ${record.dir}; lane does not update it`);
+        notes.push(`${record.name}: linked from ${record.dir}; lanes does not update it`);
       }
       continue;
     }
@@ -257,7 +257,7 @@ export function updatePlugins(only?: string): string[] {
 export function listPlugins(broken: { name: string; reason: string }[]): string[] {
   const installed = readInstalled();
   if (installed.length === 0) {
-    return ["No plugins installed. Install one with: lane plugin install <git URL or path>"];
+    return ["No plugins installed. Install one with: lanes plugin install <git URL or path>"];
   }
   return installed.map((record) => {
     const problem = broken.find((entry) => entry.name === record.name);

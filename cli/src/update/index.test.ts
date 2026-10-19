@@ -6,9 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import { npmInstallNeeded } from "./index.js";
 
-// A checkout like ~/.lane-cli: the package lives in a subfolder of the repository.
+// A checkout like ~/.lanes-cli: the package lives in a subfolder of the repository.
 function repoWithPackage(): { root: string; packageRoot: string; git: (args: string[]) => string } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "lane-update-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "lanes-update-"));
   const git = (args: string[]): string => {
     const result = spawnSync("git", args, {
       cwd: root,
@@ -31,7 +31,7 @@ function repoWithPackage(): { root: string; packageRoot: string; git: (args: str
 test("a dependency change in the package's own package.json calls for npm install", () => {
   const { root, packageRoot, git } = repoWithPackage();
   const from = git(["rev-parse", "HEAD"]);
-  fs.writeFileSync(path.join(packageRoot, "package.json"), '{"dependencies":{"lane-plugin-api":"file:../plugins/api"}}\n');
+  fs.writeFileSync(path.join(packageRoot, "package.json"), '{"dependencies":{"lanes-plugin-api":"file:../plugins/api"}}\n');
   git(["commit", "-qam", "two"]);
   assert.equal(npmInstallNeeded({ packageRoot }, from), true);
   fs.rmSync(root, { recursive: true, force: true });

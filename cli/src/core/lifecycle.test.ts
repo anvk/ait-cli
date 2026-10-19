@@ -1,18 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { taskNamesForBranch } from "./lifecycle.js";
-import type { BaseConfig, LaneConfig } from "./types.js";
+import { laneNamesForBranch } from "./lifecycle.js";
+import type { BaseConfig, LanesConfig } from "./types.js";
 
-const base: BaseConfig = { name: "api", folder: "api-base", ref: "origin/main", tasksDir: "tasks/api" };
-const config: LaneConfig = { taskPrefix: "LANE-", branchPrefix: "alex/", oldTaskDays: 14, bases: [base], warpTabGroup: false };
+const base: BaseConfig = { name: "api", folder: "api-base", ref: "origin/main", lanesDir: "lanes/api" };
+const config: LanesConfig = { lanePrefix: "ABC-", branchPrefix: "alex/", oldLaneDays: 14, bases: [base], warpTabGroup: false };
 
-test("a branch lane made maps back to its task name", () => {
-  assert.deepEqual(taskNamesForBranch(config, base, "alex/LANE-1437"), ["LANE-1437"]);
+test("a branch lanes made maps back to its lane name", () => {
+  assert.deepEqual(laneNamesForBranch(config, base, "alex/ABC-1437"), ["ABC-1437"]);
 });
 
 test("other branches are named after their last part, then the whole name", () => {
-  assert.deepEqual(taskNamesForBranch(config, base, "someone/LANE-558-fix"), ["LANE-558-fix", "LANE-someone-LANE-558-fix"]);
-  assert.deepEqual(taskNamesForBranch(config, base, "feat/login"), ["LANE-login", "LANE-feat-login"]);
-  assert.deepEqual(taskNamesForBranch(config, base, "someone/lane-701"), ["LANE-701", "LANE-someone-lane-701"]);
-  assert.deepEqual(taskNamesForBranch(config, base, "LANE-9"), ["LANE-9"]);
+  assert.deepEqual(laneNamesForBranch(config, base, "someone/ABC-558-fix"), ["ABC-558-fix", "ABC-someone-ABC-558-fix"]);
+  assert.deepEqual(laneNamesForBranch(config, base, "feat/login"), ["ABC-login", "ABC-feat-login"]);
+  assert.deepEqual(laneNamesForBranch(config, base, "someone/abc-701"), ["ABC-701", "ABC-someone-abc-701"]);
+  assert.deepEqual(laneNamesForBranch(config, base, "ABC-9"), ["ABC-9"]);
+});
+
+test("without a lane prefix, branches are named after their last part as is", () => {
+  const plain: LanesConfig = { ...config, lanePrefix: "" };
+  assert.deepEqual(laneNamesForBranch(plain, base, "alex/1437"), ["1437"]);
+  assert.deepEqual(laneNamesForBranch(plain, base, "feat/login"), ["login", "feat-login"]);
 });

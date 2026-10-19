@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// How a base folder's contents were mirrored into a task folder.
+// How a base folder's contents were mirrored into a lane folder.
 export type CopyStrategy = "clone" | "cp" | "node";
 
 export interface CopyPair {
@@ -22,21 +22,21 @@ const CP_JOBS = 4;
 
 const STRATEGY_ORDER: CopyStrategy[] = ["clone", "cp", "node"];
 
-// Whether the fast path is available here, for `lane doctor` to report.
+// Whether the fast path is available here, for `lanes doctor` to report.
 export function cloneSupport(): { available: boolean; helper: string; reason?: string } {
   if (process.platform !== "darwin") {
     return { available: false, helper: CLONE_HELPER, reason: "cloning is macOS only" };
   }
   if (!fs.existsSync(CLONE_HELPER)) {
-    return { available: false, helper: CLONE_HELPER, reason: "the helper was not built (no compiler when lane was installed)" };
+    return { available: false, helper: CLONE_HELPER, reason: "the helper was not built (no compiler when lanes was installed)" };
   }
   return { available: true, helper: CLONE_HELPER };
 }
 
-// `LANE_COPY=cp` (or `node`) starts lower down the list, to exercise or force a
+// `LANES_COPY=cp` (or `node`) starts lower down the list, to exercise or force a
 // fallback. A strategy that fails still falls through to the next one.
 function startingStrategy(): CopyStrategy {
-  const requested = process.env.LANE_COPY?.trim().toLowerCase();
+  const requested = process.env.LANES_COPY?.trim().toLowerCase();
   return STRATEGY_ORDER.includes(requested as CopyStrategy) ? (requested as CopyStrategy) : "clone";
 }
 
@@ -89,7 +89,7 @@ function cpAll(pairs: CopyPair[]): boolean {
     return false;
   }
 
-  const listFile = path.join(os.tmpdir(), `lane-copy-${process.pid}-${Date.now()}`);
+  const listFile = path.join(os.tmpdir(), `lanes-copy-${process.pid}-${Date.now()}`);
   try {
     const expanded = pairs.flatMap((pair) => expandOneLevel(pair));
     // NUL separated, so no path needs quoting; `-n 2` hands cp one pair at a time.

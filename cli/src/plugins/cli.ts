@@ -1,11 +1,11 @@
-// `lane plugin list|install|uninstall|update`.
+// `lanes plugin list|install|uninstall|update`.
 import type { Command } from "commander";
 import pc from "picocolors";
 import { installPlugin, listPlugins, uninstallPlugin, updatePlugins } from "./install.js";
 import { brokenPluginList } from "./registry.js";
 
 export function registerPluginCommands(program: Command): void {
-  const plugin = program.command("plugin").description("Install, update and list lane plugins (`lane <plugin> …` commands)");
+  const plugin = program.command("plugin").description("Install, update and list lanes plugins (`lanes <plugin> …` commands)");
 
   plugin
     .command("list")
@@ -19,7 +19,7 @@ export function registerPluginCommands(program: Command): void {
   plugin
     .command("install")
     .description("Install a plugin from a git URL (optionally #<folder in the repo>) or a local folder")
-    .argument("<source>", "e.g. https://github.com/anvk/lane.git#plugins/warp, or ../my-plugin")
+    .argument("<source>", "e.g. https://github.com/anvk/lanes.git#plugins/warp, or ../my-plugin")
     .action(async (source: string) => {
       await installPlugin(source);
     });
@@ -27,12 +27,12 @@ export function registerPluginCommands(program: Command): void {
   plugin
     .command("uninstall")
     .description("Remove an installed plugin")
-    .argument("<name>", "Plugin name, as shown by `lane plugin list`")
+    .argument("<name>", "Plugin name, as shown by `lanes plugin list`")
     .action((name: string) => uninstallPlugin(name));
 
   plugin
     .command("update")
-    .description("Pull and rebuild the installed plugins (or one of them); lane also does this when it updates itself")
+    .description("Pull and rebuild the installed plugins (or one of them); lanes also does this when it updates itself")
     .argument("[name]", "Only this plugin")
     .action((name?: string) => {
       const notes = updatePlugins(name);

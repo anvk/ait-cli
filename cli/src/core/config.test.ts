@@ -4,10 +4,10 @@ import { WARP_PLUGIN_SOURCE, normalizeConfig, parseOpenDocument, resolveBaseComm
 import { setPlugins } from "../plugins/registry.js";
 import type { Plugin } from "../plugins/types.js";
 
-const CLAUDE_TAB = "lane warp tab Claude --color yellow --command 'claude --continue'";
+const CLAUDE_TAB = "lanes warp tab Claude --color yellow --command 'claude --continue'";
 
 function base(name: string, extra: Record<string, unknown> = {}) {
-  return { name, folder: `${name}-base`, ref: "origin/main", tasksDir: `tasks/${name}`, open: [CLAUDE_TAB], ...extra };
+  return { name, folder: `${name}-base`, ref: "origin/main", lanesDir: `lanes/${name}`, open: [CLAUDE_TAB], ...extra };
 }
 
 // A stand-in for an installed plugin that only accepts `tab` lines.
@@ -18,7 +18,7 @@ const fakeWarp: Plugin = {
   register() {},
   validate(words) {
     if (words[0] !== "tab") {
-      throw new Error("only `lane warp tab` can be used here.");
+      throw new Error("only `lanes warp tab` can be used here.");
     }
     if (words.includes("--color") && words[words.indexOf("--color") + 1] === "purple") {
       throw new Error("Warp only supports red, green, yellow, blue, magenta, cyan.");
@@ -37,10 +37,10 @@ const fakeWarp: Plugin = {
 };
 
 test("a multi-base config is normalized with defaults filled in", () => {
-  const config = normalizeConfig({ taskPrefix: " LANE- ", bases: [base("api"), base("web", { branchPrefix: "x/" })] });
-  assert.equal(config.taskPrefix, "LANE-");
+  const config = normalizeConfig({ lanePrefix: " ABC- ", bases: [base("api"), base("web", { branchPrefix: "x/" })] });
+  assert.equal(config.lanePrefix, "ABC-");
   assert.equal(config.branchPrefix, "");
-  assert.equal(config.oldTaskDays, 14);
+  assert.equal(config.oldLaneDays, 14);
   assert.deepEqual(
     config.bases.map((b) => b.name),
     ["api", "web"]
@@ -71,19 +71,19 @@ test("command lines are validated when the config is read", () => {
   assert.throws(() => withOpen(""), /non-empty command line/);
   assert.throws(() => withOpen(42), /must be a command line/);
   assert.throws(() => withOpen("echo 'unterminated"), /unterminated single quote/);
-  assert.throws(() => withOpen("lane"), /`lane` on its own/);
+  assert.throws(() => withOpen("lanes"), /`lanes` on its own/);
   assert.equal(withOpen("  cursor .  ").bases[0].open?.[0], "cursor .");
-  // A plugin that is not installed cannot check its lines yet; lane offers to install it later.
-  assert.equal(withOpen("lane nope --anything").bases[0].open?.[0], "lane nope --anything");
+  // A plugin that is not installed cannot check its lines yet; lanes offers to install it later.
+  assert.equal(withOpen("lanes nope --anything").bases[0].open?.[0], "lanes nope --anything");
 });
 
 test("an installed plugin checks its own lines", () => {
   setPlugins([fakeWarp]);
   try {
     const withOpen = (line: string) => normalizeConfig({ bases: [base("api", { open: [line] })] });
-    assert.throws(() => withOpen("lane warp flush"), /only `lane warp tab`/);
-    assert.throws(() => withOpen("lane warp tab API --color purple"), /Warp only supports/);
-    assert.equal(withOpen("lane warp tab API").bases[0].open?.[0], "lane warp tab API");
+    assert.throws(() => withOpen("lanes warp flush"), /only `lanes warp tab`/);
+    assert.throws(() => withOpen("lanes warp tab API --color purple"), /Warp only supports/);
+    assert.equal(withOpen("lanes warp tab API").bases[0].open?.[0], "lanes warp tab API");
   } finally {
     setPlugins([]);
   }
@@ -97,7 +97,7 @@ test("plugins map names to where to install them", () => {
   assert.throws(() => normalizeConfig({ plugins: { warp: "" }, bases: [base("api")] }), /git URL or a path/);
 });
 
-test("a warpTabs list from before becomes lane warp tab lines, and says where Warp comes from", () => {
+test("a warpTabs list from before becomes lanes warp tab lines, and says where Warp comes from", () => {
   const config = normalizeConfig({
     warpTabGroup: true,
     bases: [
@@ -114,9 +114,9 @@ test("a warpTabs list from before becomes lane warp tab lines, and says where Wa
   });
   const [api] = config.bases;
   assert.deepEqual(api.open, [
-    "lane warp tab API --path server --color red --setup 'make dev' --group",
-    "lane warp tab CLI --group",
-    "lane warp tab Claude --color yellow --command 'claude --continue' --group"
+    "lanes warp tab API --path server --color red --setup 'make dev' --group",
+    "lanes warp tab CLI --group",
+    "lanes warp tab Claude --color yellow --command 'claude --continue' --group"
   ]);
   assert.deepEqual(api.remove, ["cd server && make down", "echo bye"]);
   assert.equal(api.template, "https://example.com/tabs.json");
@@ -136,10 +136,10 @@ test("duplicate base names are rejected", () => {
   assert.throws(() => normalizeConfig({ bases: [base("api"), base("api")] }), /more than one base named 'api'/);
 });
 
-test("a tasks directory nested in another base's is rejected", () => {
+test("a lanes directory nested in another base's is rejected", () => {
   assert.throws(
-    () => normalizeConfig({ bases: [base("api", { tasksDir: "tasks" }), base("web", { tasksDir: "tasks/web" })] }),
-    /is inside tasksDir/
+    () => normalizeConfig({ bases: [base("api", { lanesDir: "lanes" }), base("web", { lanesDir: "lanes/web" })] }),
+    /is inside lanesDir/
   );
 });
 
@@ -147,9 +147,9 @@ test("base names are limited to safe characters", () => {
   assert.throws(() => normalizeConfig({ bases: [base("c c")] }), /may only contain/);
 });
 
-test("oldTaskDays must be a positive integer", () => {
-  assert.equal(normalizeConfig({ oldTaskDays: "21", bases: [base("api")] }).oldTaskDays, 21);
-  assert.throws(() => normalizeConfig({ oldTaskDays: 0, bases: [base("api")] }), /positive integer/);
+test("oldLaneDays must be a positive integer", () => {
+  assert.equal(normalizeConfig({ oldLaneDays: "21", bases: [base("api")] }).oldLaneDays, 21);
+  assert.throws(() => normalizeConfig({ oldLaneDays: 0, bases: [base("api")] }), /positive integer/);
 });
 
 test("a document holds command lists and plugin sources, or the older tab forms", () => {
@@ -172,10 +172,10 @@ test("a document holds command lists and plugin sources, or the older tab forms"
   assert.throws(() => parseOpenDocument('{"warpTabs": null}', "doc"), /must be an array/);
 });
 
-test("a config from before multiple bases asks for lane init", () => {
-  assert.throws(() => normalizeConfig({ baseFolder: "web", baseRef: "origin/main", tasksDir: "tasks" }), /lane init/);
+test("a config from before multiple bases asks for lanes init", () => {
+  assert.throws(() => normalizeConfig({ baseFolder: "web", baseRef: "origin/main", lanesDir: "lanes" }), /lanes init/);
 });
 
 test("a config without bases is rejected", () => {
-  assert.throws(() => normalizeConfig({ taskPrefix: "LANE-" }), /`bases` must be an array/);
+  assert.throws(() => normalizeConfig({ lanePrefix: "ABC-" }), /`bases` must be an array/);
 });
