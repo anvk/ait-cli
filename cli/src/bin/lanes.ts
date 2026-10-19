@@ -87,8 +87,8 @@ program
 program
   .command("init")
   .description("Initialize .lanes.json in the current directory")
-  .argument("[template]", "Command lists to suggest for each base: 'default', a file path or a URL")
-  .action((template: string | undefined) => runInitCommand(template, repo()));
+  .argument("[source]", "Your team's setup to suggest for each base: a URL or file path, or 'default'")
+  .action((source: string | undefined) => runInitCommand(source, repo()));
 
 withOpenOptions(
   program

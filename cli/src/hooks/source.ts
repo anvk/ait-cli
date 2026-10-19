@@ -65,7 +65,7 @@ function readLocalFile(source: string, cwd: string): string {
   return fs.readFileSync(resolved, "utf8");
 }
 
-interface GitHubFile {
+export interface GitHubFile {
   owner: string;
   repo: string;
   ref: string;
@@ -73,7 +73,7 @@ interface GitHubFile {
 }
 
 // github.com/<owner>/<repo>/blob/<ref>/<path> or raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>.
-function parseGitHubUrl(source: string): GitHubFile | null {
+export function parseGitHubUrl(source: string): GitHubFile | null {
   let url: URL;
   try {
     url = new URL(source);
@@ -91,20 +91,41 @@ function parseGitHubUrl(source: string): GitHubFile | null {
 }
 
 async function fetchUrl(source: string): Promise<string> {
-  // Private repositories answer anonymous requests with 404, so GitHub URLs go
-  // through the authenticated `gh` CLI when it is available.
+  // A GitHub file link (`github.com/<owner>/<repo>/blob/<ref>/<path>`) is a web page, so
+  // it is read through the authenticated `gh` CLI when that works, which also covers
+  // private repositories, and otherwise from raw.githubusercontent.com, which is enough
+  // for public ones.
   const github = parseGitHubUrl(source);
-  if (github && commandExists("gh")) {
+  if (!github) {
+    return fetchText(source);
+  }
+  const hasGh = commandExists("gh");
+  if (hasGh) {
     const endpoint =
       `repos/${github.owner}/${github.repo}/contents/${github.filePath}` + `?ref=${encodeURIComponent(github.ref)}`;
     try {
       return run("gh", ["api", "-H", "Accept: application/vnd.github.raw", endpoint]).stdout;
-    } catch (error) {
-      throw new Error(`gh api failed: ${message(error)}`);
+    } catch {
+      // Not logged in, or no access: the public address below may still work.
     }
   }
+  try {
+    return await fetchText(rawGitHubUrl(github));
+  } catch (error) {
+    const hint = hasGh
+      ? " (gh could not read it either; check `gh auth status` for a private repository)"
+      : " (for a private repository, install the GitHub CLI and run `gh auth login`)";
+    throw new Error(`${message(error)}${hint}`);
+  }
+}
 
-  const response = await fetch(source, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+export function rawGitHubUrl(file: GitHubFile): string {
+  const path = [file.owner, file.repo, file.ref, ...file.filePath.split("/")].map(encodeURIComponent).join("/");
+  return `https://raw.githubusercontent.com/${path}`;
+}
+
+async function fetchText(url: string): Promise<string> {
+  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
   }
