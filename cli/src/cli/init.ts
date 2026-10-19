@@ -279,7 +279,7 @@ async function promptBaseCommands(
   const suggested = template ?? existingBase?.template ?? (existingBase?.open ? NONE : DEFAULT_TEMPLATE);
   while (true) {
     const answer = await wizard.ask(
-      `Command lists to load ('${DEFAULT_TEMPLATE}' for Claude and Terminal tabs, a file path or URL; 'none' to set them up by hand)`,
+      `Command lists to load (a URL or file path, '${DEFAULT_TEMPLATE}' for Claude and Terminal tabs, or 'none' to set them up by hand)`,
       suggested
     );
     const source = answer === NONE ? "" : answer;

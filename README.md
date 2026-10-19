@@ -11,6 +11,26 @@ Run `lanes` to jump between lanes, and `lanes remove 1437` to clean one up when 
 
 This repository holds the `lanes` command (`cli/`), its plugins (`plugins/`) and its templates (`templates/`).
 
+## Quick start
+
+1. Make sure `git`, `node` (22 or later) and `npm` are installed.
+
+2. Install `lanes`:
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lanes/main/tools/install.sh)"
+```
+
+3. In a folder holding git clones of your projects, run:
+
+```bash
+lanes init
+```
+
+Press Enter through the questions to use the built-in setup (see [Out of the box](#out-of-the-box)), or pass your
+team's setup by URL: `lanes init https://github.com/your-org/dev-setup/blob/main/lanes.json`. Then run `lanes 1437` to
+start a lane, or `lanes` to pick one.
+
 ## Out of the box
 
 The built-in `default` setup is made for [Warp](https://www.warp.dev) and [Claude Code](https://www.anthropic.com/claude-code).
@@ -24,41 +44,6 @@ You only need both installed: when you choose `default`, `lanes init` offers to 
 Nothing else in `lanes` is tied to either tool. To use a different agent, change the tab's
 command in `.lanes.json`, for example `"lanes warp tab Agent --color yellow --command 'codex'"`. To skip Warp, replace
 the tabs with any command lines, such as `cursor .` or `tmux new-window -c {path} -n {lane}`.
-
-## Quick start
-
-You need `git`, `node` (22 or later) and `npm`.
-
-1. Install `lanes`:
-
-```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lanes/main/tools/install.sh)"
-```
-
-2. Make a workspace folder and clone the projects you want to work on into it (one or several):
-
-```bash
-mkdir ~/work && cd ~/work
-git clone git@github.com:you/app.git app
-```
-
-3. Set up the workspace with the default Claude and Terminal tabs:
-
-```bash
-lanes init default
-```
-
-Press Enter through the questions: `lanes init` suggests your clone folder, fills in the template, and offers to install
-the Warp plugin it needs. With several clones, answer `y` to "Add another base repository?" for each one.
-
-4. Start a lane:
-
-```bash
-lanes 1437
-```
-
-That creates `lanes/app/1437` on its own branch and opens it. Run `lanes` to pick between lanes. The sections below
-explain each step, how updates work, and every command.
 
 ## Install
 
@@ -105,16 +90,18 @@ cd /path/to/workspace
 lanes init
 ```
 
-`lanes init <template>` (for example `lanes init default`, or a path or URL) suggests that template for every base, so
-you only press Enter. Without one, `lanes init` still suggests `default` for a new base.
+`lanes init <source>` suggests that setup for every base, so you only press Enter. A source is a URL (a GitHub file
+link works for public repositories, and for private ones when `gh` is logged in), a file path, or `default`. Without
+one, `lanes init` suggests `default` for a new base. This lets a team keep its setup in one place: see
+[Command documents](#command-documents).
 
 `lanes init` asks for an optional lane name prefix (`ABC-`), the branch prefix (`alex/`), the "old lane" threshold, then each base
 in turn: its folder, a short name, the ref to branch from (`origin/main`), its lanes directory (`lanes/<name>`), and
 the [commands run for its lanes](#what-runs-with-a-lane). The commands come from one of three places:
 
 1. **Copy an earlier base's commands**, offered once a previous base has some.
-2. **Load a [command document](#command-documents)**: the built-in `default` (the answer Enter gives), a path or a
-   URL. It is validated and shown before you accept it, and saved as `template` for `lanes commands update`.
+2. **Load a [command document](#command-documents)**: a URL, a path, or the built-in `default` (the answer Enter
+   gives). It is validated and shown before you accept it, and saved as `template` for `lanes commands update`.
 3. **Type them in** (answer `none` to the load question). Each `open` entry is either a Warp tab, asked as title,
    folder, color and command, or any command line such as `cursor .`. Then the `create` and `remove` lists, which
    are usually empty.
@@ -156,7 +143,7 @@ Outside a terminal (`lanes | cat`), `lanes` prints the same report as `lanes lis
 
 | Command | What it does |
 | --- | --- |
-| `lanes init [template]` | Set up or change the workspace's `.lanes.json`, suggesting `template` for each base. |
+| `lanes init [source]` | Set up or change the workspace's `.lanes.json`, suggesting the setup at `source` (URL, path or `default`) for each base. |
 | `lanes <id>` / `lanes open <id>` | Open the lane, or create it and open it. The usual way in. |
 | `lanes create <id>` | Create only. `--no-open` skips the open commands. Fails if the lane exists. |
 | `lanes checkout <branch>` | Make a lane of an existing branch (see below); opens the lane that already has it. |
@@ -286,8 +273,8 @@ A command document is a JSON object with any of `open`, `create` and `remove`, s
 and load it in every workspace. `default` is built in: a `Claude` tab running `claude --continue` and a plain
 `Terminal` tab, both Warp tabs in the lane folder. [`templates/`](templates) has its source. Another workspace's
 `.lanes.json` works as a source too, since it has the same keys. A source is a built-in name, a local path (relative
-to the workspace, `~` allowed) or an `http(s)` URL. When `gh` is logged in, GitHub URLs are fetched through it, so
-private repositories work. `lanes commands update` prints `updated`, `unchanged`, `skipped` or `failed` per base and
+to the workspace, `~` allowed) or an `http(s)` URL. A GitHub file link (`github.com/<org>/<repo>/blob/<branch>/<file>`) works as is for a public
+repository; for a private one, `lanes` reads it through `gh` when that is logged in. `lanes commands update` prints `updated`, `unchanged`, `skipped` or `failed` per base and
 only rewrites `.lanes.json` when something changed. Lists the document does not mention are left as they are.
 
 ## Configuration
