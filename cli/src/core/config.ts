@@ -9,7 +9,7 @@ export const CONFIG_FILE = ".lane.json";
 
 // The one plugin lane knows by name, and only here: a config written before command lists
 // (`warpTabs`) can only mean Warp, so its conversion also says where Warp comes from.
-export const WARP_PLUGIN_SOURCE = "https://github.com/anvk/lane-cli.git#plugins/warp";
+export const WARP_PLUGIN_SOURCE = "https://github.com/anvk/lane.git#plugins/warp";
 const LEGACY_WARP_COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"];
 
 // A command document, or the part of a config that one can replace.

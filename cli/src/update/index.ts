@@ -220,7 +220,7 @@ export function applyUpdate(info: InstallPaths): UpdateOutcome {
 }
 
 export function recoveryHint(): string {
-  return 'Reinstall with: sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane-cli/main/tools/install.sh)"';
+  return 'Reinstall with: sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane/main/tools/install.sh)"';
 }
 
 // Installed plugins move with lane: a plugin from lane's own checkout has just been moved,

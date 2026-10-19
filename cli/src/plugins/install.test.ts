@@ -6,9 +6,9 @@ import path from "node:path";
 import { parseSource } from "./install.js";
 
 test("a git URL may carry the folder of the plugin inside the repository", () => {
-  assert.deepEqual(parseSource("https://github.com/anvk/lane-cli.git#plugins/warp"), {
+  assert.deepEqual(parseSource("https://github.com/anvk/lane.git#plugins/warp"), {
     kind: "git",
-    location: "https://github.com/anvk/lane-cli.git",
+    location: "https://github.com/anvk/lane.git",
     subdir: "plugins/warp"
   });
   assert.deepEqual(parseSource("git@github.com:x/lane-plugin-tmux.git"), {

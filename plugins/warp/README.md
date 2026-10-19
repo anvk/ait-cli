@@ -4,7 +4,7 @@ Opens a task's folders as [Warp](https://www.warp.dev) tabs. Install it once, th
 `lane warp tab …` lines in a base's `open` list:
 
 ```bash
-lane plugin install https://github.com/anvk/lane-cli.git#plugins/warp
+lane plugin install https://github.com/anvk/lane.git#plugins/warp
 ```
 
 ```json

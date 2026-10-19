@@ -10,7 +10,7 @@ Plugins are installed per person from a git URL or a local folder, and lane keep
 date along with itself:
 
 ```bash
-lane plugin install https://github.com/anvk/lane-cli.git#plugins/warp
+lane plugin install https://github.com/anvk/lane.git#plugins/warp
 lane plugin list
 lane plugin update        # lane also does this whenever it updates itself
 lane plugin uninstall warp
@@ -20,7 +20,7 @@ A workspace can say where its plugins come from, so a teammate who opens it is o
 install:
 
 ```json
-"plugins": { "warp": "https://github.com/anvk/lane-cli.git#plugins/warp" }
+"plugins": { "warp": "https://github.com/anvk/lane.git#plugins/warp" }
 ```
 
 This folder holds the plugins that ship with lane, and `api/`, the interface they are written
@@ -49,7 +49,7 @@ my-plugin/
   "main": "dist/index.js",
   "lane": { "name": "tmux", "api": 1 },
   "scripts": { "build": "tsc -p tsconfig.json" },
-  "dependencies": { "commander": "^12.1.0", "lane-plugin-api": "git+https://github.com/anvk/lane-cli.git#path:plugins/api" },
+  "dependencies": { "commander": "^12.1.0", "lane-plugin-api": "git+https://github.com/anvk/lane.git#path:plugins/api" },
   "devDependencies": { "typescript": "^5.8.2", "@types/node": "^22.13.10" }
 }
 ```

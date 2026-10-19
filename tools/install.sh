@@ -3,7 +3,7 @@
 set -eu
 
 LANE_HOME="${LANE_HOME:-$HOME/.lane-cli}"
-LANE_REPO_URL="${LANE_REPO_URL:-https://github.com/anvk/lane-cli.git}"
+LANE_REPO_URL="${LANE_REPO_URL:-https://github.com/anvk/lane.git}"
 LANE_BRANCH="${LANE_BRANCH:-main}"
 LANE_SUBDIR="${LANE_SUBDIR:-cli}"
 

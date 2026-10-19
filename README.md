@@ -9,6 +9,8 @@ base's `node_modules` and env files so it is ready to run straight away, and ope
 Warp tab and a terminal in another, an editor such as `cursor .`, a tmux window, or anything else with a command line.
 Run `lane` to jump between tasks, and `lane remove 1437` to clean one up when it is merged.
 
+This repository holds the `lane` command (`cli/`), its plugins (`plugins/`) and its templates (`templates/`).
+
 ## Out of the box
 
 The built-in `default` setup is made for [Warp](https://www.warp.dev) and [Claude Code](https://www.anthropic.com/claude-code).
@@ -30,7 +32,7 @@ the tabs with any command lines, such as `cursor .` or `tmux new-window -c {path
 2. Install `lane`:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane-cli/main/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane/main/tools/install.sh)"
 ```
 
 3. Initialize a workspace. Each base folder must be a git clone of your project, so clone those first if you have not:
@@ -49,13 +51,13 @@ explain each step, how updates work, and every command.
 You need `git`, `node` (22 or later) and `npm`. With `curl`:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane-cli/main/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane/main/tools/install.sh)"
 ```
 
 or with `wget`:
 
 ```bash
-sh -c "$(wget -qO- https://raw.githubusercontent.com/anvk/lane-cli/main/tools/install.sh)"
+sh -c "$(wget -qO- https://raw.githubusercontent.com/anvk/lane/main/tools/install.sh)"
 ```
 
 This clones the repository into `~/.lane-cli`, builds `lane` from `cli/`, and links the command globally. Set `LANE_HOME`
@@ -245,7 +247,7 @@ are installed per person from a git URL (optionally `#folder` inside the reposit
 updates them whenever it updates itself:
 
 ```bash
-lane plugin install https://github.com/anvk/lane-cli.git#plugins/warp
+lane plugin install https://github.com/anvk/lane.git#plugins/warp
 lane plugin list
 lane plugin update        # also done by lane's own update
 lane plugin uninstall warp
@@ -255,7 +257,7 @@ A workspace says where its plugins come from, so a teammate who opens it without
 a terminal, lane fails with the command to run):
 
 ```json
-"plugins": { "warp": "https://github.com/anvk/lane-cli.git#plugins/warp" }
+"plugins": { "warp": "https://github.com/anvk/lane.git#plugins/warp" }
 ```
 
 The plugins that ship with lane live in [`plugins/`](plugins), along with a [guide to writing one](plugins/README.md).
@@ -315,7 +317,7 @@ only rewrites `.lane.json` when something changed. Lists the document does not m
 
 A task belongs to the base whose `tasksDir` holds it, so the same task name can exist in two bases.
 
-`"plugins": { "warp": "https://github.com/anvk/lane-cli.git#plugins/warp" }` goes at the top level when a list uses
+`"plugins": { "warp": "https://github.com/anvk/lane.git#plugins/warp" }` goes at the top level when a list uses
 `lane warp tab`. The `default` template adds it for you.
 
 **Coming from `ait`:** this tool used to be called `ait`. Its single-base `.ait.json` is not read. Run `lane init`
@@ -353,7 +355,7 @@ The repository is laid out like this:
 | `tools/install.sh` | The installer |
 
 ```bash
-git clone https://github.com/anvk/lane-cli.git && cd lane-cli/cli
+git clone https://github.com/anvk/lane.git && cd lane/cli
 npm install
 npm test
 npm run build && npm link       # point the global `lane` at this checkout

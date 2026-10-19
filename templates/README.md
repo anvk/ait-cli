@@ -12,7 +12,7 @@ that, `lane commands update` refreshes the lists from the document.
 you keep somewhere else, use its address as the source:
 
 ```
-https://github.com/anvk/lane-cli/blob/main/templates/default.json
+https://github.com/anvk/lane/blob/main/templates/default.json
 ```
 
 A document is a JSON object with any of `open`, `create` and `remove`. Each is a list of shell command lines:

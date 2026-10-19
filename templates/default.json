@@ -1,6 +1,6 @@
 {
   "plugins": {
-    "warp": "https://github.com/anvk/lane-cli.git#plugins/warp"
+    "warp": "https://github.com/anvk/lane.git#plugins/warp"
   },
   "open": [
     "lane warp tab Claude --color yellow --command 'claude --continue'",

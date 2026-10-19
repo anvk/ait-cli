@@ -19,7 +19,7 @@ export function registerPluginCommands(program: Command): void {
   plugin
     .command("install")
     .description("Install a plugin from a git URL (optionally #<folder in the repo>) or a local folder")
-    .argument("<source>", "e.g. https://github.com/anvk/lane-cli.git#plugins/warp, or ../my-plugin")
+    .argument("<source>", "e.g. https://github.com/anvk/lane.git#plugins/warp, or ../my-plugin")
     .action(async (source: string) => {
       await installPlugin(source);
     });
