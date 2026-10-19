@@ -11,11 +11,13 @@ import {
   deleteLocalBranch,
   fetchOrigin,
   fetchRemoteBranch,
+  hasOrigin,
   inspectBaseWorkingState,
   isBaseWorkingStateClean,
   listWorktreeBranches,
   localBranchExists,
   rebaseCurrentBranchOnto,
+  refResolves,
   removeWorktree
 } from "./git.js";
 import { ensureLanesDir, getLanePath, listLaneFolders, syncBaseFolderIntoLane, toLaneName } from "./lanes.js";
@@ -120,6 +122,26 @@ function assertBaseIsClean(base: BaseConfig, baseRepoRoot: string, options: Forc
   );
 }
 
+// A ref that does not resolve would otherwise surface as a bare git error halfway
+// through creation. The usual causes: a local-only repository (no `origin`), or a
+// default branch other than `main`; either way the fix is the base's `ref`.
+function assertBaseRefExists(base: BaseConfig, baseRepoRoot: string): void {
+  if (refResolves(baseRepoRoot, base.ref)) {
+    return;
+  }
+  throw new Error(
+    [
+      `Base '${base.name}' branches from '${base.ref}', which does not exist in ${base.folder}.`,
+      `Set "ref" for this base in .lanes.json to a branch it has ('git -C ${base.folder} branch -a' lists them).`,
+      base.ref.startsWith("origin/") && !hasOrigin(baseRepoRoot)
+        ? `Or add the remote it expects: git -C ${base.folder} remote add origin <url>`
+        : ""
+    ]
+      .filter(Boolean)
+      .join("\n")
+  );
+}
+
 // The last step of making a lane: bring over what the new worktree lacks from the base.
 function copyBaseIntoLane(configDir: string, location: LaneLocation): void {
   const { base, laneName, lanePath } = location;
@@ -141,8 +163,13 @@ export function createLaneFolder(
   const { base, laneName, lanePath } = location;
   const baseRepoRoot = resolveBaseRepoRoot(configDir, base);
 
-  console.log(pc.cyan(`Fetching origin in ${base.folder}...`));
-  fetchOrigin(baseRepoRoot);
+  if (hasOrigin(baseRepoRoot)) {
+    console.log(pc.cyan(`Fetching origin in ${base.folder}...`));
+    fetchOrigin(baseRepoRoot);
+  } else {
+    console.log(pc.dim(`${base.folder} has no 'origin' remote, so nothing is fetched.`));
+  }
+  assertBaseRefExists(base, baseRepoRoot);
   // Checked after the fetch, so `base.ref` is current, and before the rebase, so
   // `--autostash` cannot hide uncommitted changes by tucking them away and back.
   assertBaseIsClean(base, baseRepoRoot, options);
@@ -236,9 +263,13 @@ function checkoutBranchLane(
     );
   }
 
-  console.log(pc.cyan(`Fetching ${branchName} from origin...`));
-  if (!fetchRemoteBranch(baseRepoRoot, branchName) && !localBranchExists(baseRepoRoot, branchName)) {
-    throw new Error(`Branch '${branchName}' exists neither locally nor on origin.`);
+  if (hasOrigin(baseRepoRoot)) {
+    console.log(pc.cyan(`Fetching ${branchName} from origin...`));
+    if (!fetchRemoteBranch(baseRepoRoot, branchName) && !localBranchExists(baseRepoRoot, branchName)) {
+      throw new Error(`Branch '${branchName}' exists neither locally nor on origin.`);
+    }
+  } else if (!localBranchExists(baseRepoRoot, branchName)) {
+    throw new Error(`Branch '${branchName}' does not exist in ${base.folder}, which has no 'origin' remote to fetch it from.`);
   }
 
   // A folder by that name is some other branch's lane (this branch's was found above).

@@ -4,7 +4,6 @@ import path from "node:path";
 import { parseOpenDocument, type CommandDocument } from "../core/config.js";
 import { commandExists, run } from "../core/process.js";
 import { errorMessage } from "../core/util.js";
-import { builtinTemplate } from "./templates.js";
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -16,13 +15,9 @@ function isUrlSource(source: string): boolean {
   return /^https?:\/\//i.test(source);
 }
 
-// Reads a command-list document from a built-in template name, a local path or a URL and
-// validates it. Errors carry the source so the caller can print them and ask again.
+// Reads a command-list document from a local path or a URL and validates it. Errors
+// carry the source so the caller can print them and ask again.
 export async function loadCommandsFromSource(source: string, cwd: string): Promise<CommandDocument> {
-  const builtin = builtinTemplate(source);
-  if (builtin) {
-    return copyLists(builtin);
-  }
   const cached = cache.get(source);
   if (cached) {
     if ("error" in cached) {

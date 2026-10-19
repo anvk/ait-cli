@@ -4,10 +4,10 @@
 running one to N coding agents in parallel, across one project or many, without them stepping on each other's files or
 branches. It works with any agent that has a command line: you decide what runs for each lane.
 
-Every lane gets its own git worktree on its own branch. `lanes 1437` creates `lanes/api/1437`, clones in the
-base's `node_modules` and env files so it is ready to run straight away, and opens your setup for it: an agent in one
-Warp tab and a terminal in another, an editor such as `cursor .`, a tmux window, or anything else with a command line.
-Run `lanes` to jump between lanes, and `lanes remove 1437` to clean one up when it is merged.
+Run `lanes` to get a picker over your lanes, where you create, open and remove them. Every lane is its own git
+worktree on its own branch, with the base's `node_modules` and env files cloned in so it is ready to run straight away,
+and opening it starts your setup: an agent in one Warp tab and a terminal in another, an editor such as `cursor .`, a
+tmux window, or anything else with a command line.
 
 This repository holds the `lanes` command (`cli/`), its plugins (`plugins/`) and its templates (`templates/`).
 
@@ -24,23 +24,24 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lanes/main/tools/inst
 3. In a folder holding git clones of your projects, run:
 
 ```bash
-lanes init
+lanes init https://github.com/anvk/lanes/blob/main/templates/default.json
 ```
 
-Press Enter through the questions to use the built-in setup (see [Out of the box](#out-of-the-box)), or pass your
-team's setup by URL: `lanes init https://github.com/your-org/dev-setup/blob/main/lanes.json`. Then run `lanes 1437` to
-start a lane, or `lanes` to pick one.
+Press Enter through the questions. Every lane then opens as two Warp tabs: one running Claude Code and a plain
+terminal (see [Out of the box](#out-of-the-box)). Then run `lanes` to create your first lane.
+
+To use your team's own setup instead, pass its URL. To type the commands in yourself, run `lanes init` with no URL.
 
 ## Out of the box
 
-The built-in `default` setup is made for [Warp](https://www.warp.dev) and [Claude Code](https://www.anthropic.com/claude-code).
+The [default template](templates/default.json) is made for [Warp](https://www.warp.dev) and [Claude Code](https://www.anthropic.com/claude-code).
 Each lane opens as two Warp tabs in the lane folder:
 
 - **Claude** runs `claude --continue`, which picks up that lane's last Claude Code session. A lane with no session
   yet starts a fresh one.
 - **Terminal** is a plain shell, for git, tests and anything else.
 
-You only need both installed: when you choose `default`, `lanes init` offers to install its Warp plugin for you.
+You only need both installed: when you load the template, `lanes init` offers to install the Warp plugin for you.
 Nothing else in `lanes` is tied to either tool. To use a different agent, change the tab's
 command in `.lanes.json`, for example `"lanes warp tab Agent --color yellow --command 'codex'"`. To skip Warp, replace
 the tabs with any command lines, such as `cursor .` or `tmux new-window -c {path} -n {lane}`.
@@ -91,17 +92,15 @@ lanes init
 ```
 
 `lanes init <source>` suggests that setup for every base, so you only press Enter. A source is a URL (a GitHub file
-link works for public repositories, and for private ones when `gh` is logged in), a file path, or `default`. Without
-one, `lanes init` suggests `default` for a new base. This lets a team keep its setup in one place: see
-[Command documents](#command-documents).
+link works for public repositories, and for private ones when `gh` is logged in) or a file path. Without one, you type
+the commands in. This lets a team keep its setup in one place: see [Command documents](#command-documents).
 
 `lanes init` asks for an optional lane name prefix (`ABC-`), the branch prefix (`alex/`), the "old lane" threshold, then each base
 in turn: its folder, a short name, the ref to branch from (`origin/main`), its lanes directory (`lanes/<name>`), and
 the [commands run for its lanes](#what-runs-with-a-lane). The commands come from one of three places:
 
 1. **Copy an earlier base's commands**, offered once a previous base has some.
-2. **Load a [command document](#command-documents)**: a URL, a path, or the built-in `default` (the answer Enter
-   gives). It is validated and shown before you accept it, and saved as `template` for `lanes commands update`.
+2. **Load a [command document](#command-documents)** from a URL or a path. It is validated and shown before you accept it, and saved as `template` for `lanes commands update`.
 3. **Type them in** (answer `none` to the load question). Each `open` entry is either a Warp tab, asked as title,
    folder, color and command, or any command line such as `cursor .`. Then the `create` and `remove` lists, which
    are usually empty.
@@ -109,13 +108,14 @@ the [commands run for its lanes](#what-runs-with-a-lane). The commands come from
 Enter accepts the default shown in parentheses. `esc` goes back a question (press again to go further). Nothing is
 written until you accept the summary. Re-running `lanes init` starts from the saved answers.
 
-Every base must be a git clone: lanes are worktrees of it. `lanes init` warns about a folder that is not, and other
-commands refuse to run until it is.
+Every base must be a git repository: lanes are worktrees of it. `lanes init` warns about a folder that is not, and
+other commands refuse to run until it is. Lanes branch from `origin/main` unless you change a base's `ref`. A
+repository with no `origin` remote works too: set its `ref` to a local branch, such as `main`, and nothing is fetched.
 
 ## Daily use
 
-Run `lanes <id>` anywhere inside the workspace to go straight to a lane (creating it if needed), or `lanes` on its own
-to open the picker over your lanes:
+Run `lanes` anywhere inside the workspace. It opens a picker over your lanes, where you create, open, check out and
+remove them:
 
 | Key | In the search field | In the list |
 | --- | --- | --- |
@@ -127,6 +127,8 @@ to open the picker over your lanes:
 | `b` | | check out a branch, prefilled with the filter |
 | `d` | | remove the lane (type `delete` to confirm) |
 | `esc` / `ctrl+c` | quit | quit |
+
+If you already know the lane, `lanes 1437` (or `lanes open 1437`) opens it without the picker.
 
 The first two rows are always `+ Create new lane` and `⇣ Check out a branch`; lanes follow, split into `recent` and
 `old`. With several bases each lane is tagged `[base]`, and the create prompt and branch search show which base
@@ -143,11 +145,11 @@ Outside a terminal (`lanes | cat`), `lanes` prints the same report as `lanes lis
 
 | Command | What it does |
 | --- | --- |
-| `lanes init [source]` | Set up or change the workspace's `.lanes.json`, suggesting the setup at `source` (URL, path or `default`) for each base. |
-| `lanes <id>` / `lanes open <id>` | Open the lane, or create it and open it. The usual way in. |
+| `lanes init [source]` | Set up or change the workspace's `.lanes.json`, suggesting the setup at `source` (a URL or path) for each base. |
+| `lanes` / `lanes pick` | The picker: create, open, check out and remove lanes. The usual way in. |
+| `lanes <id>` / `lanes open <id>` | Open the lane, creating it if needed, without the picker. |
 | `lanes create <id>` | Create only. `--no-open` skips the open commands. Fails if the lane exists. |
 | `lanes checkout <branch>` | Make a lane of an existing branch (see below); opens the lane that already has it. |
-| `lanes` / `lanes pick` | The picker. |
 | `lanes list` | Print lanes, recent and old. |
 | `lanes remove <id>` | Remove one lane after you type `delete`. |
 | `lanes purge [--days N]` | Remove every lane untouched for N days (default `oldLaneDays`) after you type `PURGE <count>`. |
@@ -171,7 +173,7 @@ Flags shared by the commands that open lanes:
 
 ### Creating a lane
 
-`lanes open`/`lanes create` fetch origin, check the base is clean, rebase the base onto its `ref`, add a worktree on a new
+`lanes open`/`lanes create` fetch origin (when the base has one), check the base is clean, rebase the base onto its `ref`, add a worktree on a new
 branch `<branchPrefix><laneName>` (e.g. `alex/ABC-1437`), and copy over what git ignores. If the base has `create`
 commands, or a Warp tab with `--setup`, `lanes` asks once whether to run them, then runs the `open` list.
 
@@ -270,9 +272,9 @@ The Warp plugin's `lanes warp tab` flags are in [its README](plugins/warp/README
 ### Command documents
 
 A command document is a JSON object with any of `open`, `create` and `remove`, so you can keep one per project
-and load it in every workspace. `default` is built in: a `Claude` tab running `claude --continue` and a plain
-`Terminal` tab, both Warp tabs in the lane folder. [`templates/`](templates) has its source. Another workspace's
-`.lanes.json` works as a source too, since it has the same keys. A source is a built-in name, a local path (relative
+and load it in every workspace. [`templates/default.json`](templates/default.json) is one: a `Claude` tab running `claude --continue` and a plain
+`Terminal` tab, both Warp tabs in the lane folder. Another workspace's
+`.lanes.json` works as a source too, since it has the same keys. A source is a local path (relative
 to the workspace, `~` allowed) or an `http(s)` URL. A GitHub file link (`github.com/<org>/<repo>/blob/<branch>/<file>`) works as is for a public
 repository; for a private one, `lanes` reads it through `gh` when that is logged in. `lanes commands update` prints `updated`, `unchanged`, `skipped` or `failed` per base and
 only rewrites `.lanes.json` when something changed. Lists the document does not mention are left as they are.
@@ -315,14 +317,14 @@ only rewrites `.lanes.json` when something changed. Lists the document does not 
 | `bases[].lanesDir` | Where this base's lanes go. Each base needs its own, not nested in another's. |
 | `bases[].branchPrefix` | Overrides the top-level branch prefix. Optional. |
 | `bases[].open`, `create`, `remove` | This base's command lists. `open` is required here or at the top level; the others default to empty. |
-| `bases[].template` | Built-in name, path or URL the lists came from, for `lanes commands update`. Optional. |
+| `bases[].template` | URL or path the lists came from, for `lanes commands update`. Optional. |
 | `open`, `create`, `remove` | Shared lists for bases without their own. Optional. |
 | `plugins` | Where to install each plugin the lists use: `{ "warp": "<git URL or path>" }`. Optional. |
 
 A lane belongs to the base whose `lanesDir` holds it, so the same lane name can exist in two bases.
 
 `"plugins": { "warp": "https://github.com/anvk/lanes.git#plugins/warp" }` goes at the top level when a list uses
-`lanes warp tab`. The `default` template adds it for you.
+`lanes warp tab`. The default template adds it for you.
 
 **Coming from `ait`:** this tool used to be called `ait`. Its single-base `.ait.json` is not read. Run `lanes init`
 once in the workspace, then remove the old install with `npm rm -g ait-cli && rm -rf ~/.ait-cli`.
@@ -355,7 +357,7 @@ The repository is laid out like this:
 | `cli/` | The `lanes` command (package `lanes-cli`) |
 | `plugins/api/` | `lanes-plugin-api`, the interface plugins implement |
 | `plugins/warp/` | The Warp plugin (`lanes warp tab`) |
-| `templates/` | Command documents; `default.json` is also built into `lanes` |
+| `templates/` | Command documents, such as the default template |
 | `tools/install.sh` | The installer |
 
 ```bash
