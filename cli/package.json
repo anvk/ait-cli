@@ -1,0 +1,29 @@
+{
+  "name": "lane-cli",
+  "version": "0.2.0",
+  "description": "Global CLI for repo task worktrees",
+  "type": "module",
+  "bin": {
+    "lane": "./dist/bin/lane.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node tools/build-clonedir.mjs && node tools/build-bin-mode.mjs",
+    "start": "node ./dist/bin/lane.js",
+    "dev": "tsx ./src/bin/lane.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1",
+    "lane-plugin-api": "file:../plugins/api"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
