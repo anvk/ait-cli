@@ -33,6 +33,16 @@ export function fetchOrigin(repoRoot: string): void {
   runInteractive("git", ["fetch", "origin"], { cwd: repoRoot });
 }
 
+// A repository made locally (`git init`, a project generator) has no `origin`; lanes then
+// works from its local branches and skips every fetch.
+export function hasOrigin(repoRoot: string): boolean {
+  try {
+    return gitList(repoRoot, ["remote"]).includes("origin");
+  } catch {
+    return false;
+  }
+}
+
 export function rebaseCurrentBranchOnto(repoRoot: string, baseRef: string): void {
   runInteractive("git", ["rebase", "--autostash", baseRef], { cwd: repoRoot });
 }

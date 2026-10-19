@@ -109,8 +109,9 @@ the [commands run for its lanes](#what-runs-with-a-lane). The commands come from
 Enter accepts the default shown in parentheses. `esc` goes back a question (press again to go further). Nothing is
 written until you accept the summary. Re-running `lanes init` starts from the saved answers.
 
-Every base must be a git clone: lanes are worktrees of it. `lanes init` warns about a folder that is not, and other
-commands refuse to run until it is.
+Every base must be a git repository: lanes are worktrees of it. `lanes init` warns about a folder that is not, and
+other commands refuse to run until it is. Lanes branch from `origin/main` unless you change a base's `ref`. A
+repository with no `origin` remote works too: set its `ref` to a local branch, such as `main`, and nothing is fetched.
 
 ## Daily use
 
@@ -171,7 +172,7 @@ Flags shared by the commands that open lanes:
 
 ### Creating a lane
 
-`lanes open`/`lanes create` fetch origin, check the base is clean, rebase the base onto its `ref`, add a worktree on a new
+`lanes open`/`lanes create` fetch origin (when the base has one), check the base is clean, rebase the base onto its `ref`, add a worktree on a new
 branch `<branchPrefix><laneName>` (e.g. `alex/ABC-1437`), and copy over what git ignores. If the base has `create`
 commands, or a Warp tab with `--setup`, `lanes` asks once whether to run them, then runs the `open` list.
 
