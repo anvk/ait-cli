@@ -44,7 +44,12 @@ function loadExistingConfig(repoRoot: string): LaneConfig | null {
   }
 }
 
-export async function interactiveInit(repoRoot: string): Promise<string> {
+export interface InitOptions {
+  // Command lists to suggest for every base: a built-in template name, a path or a URL.
+  template?: string;
+}
+
+export async function interactiveInit(repoRoot: string, options: InitOptions = {}): Promise<string> {
   const existing = loadExistingConfig(repoRoot);
   const folderCandidates = listFolderCandidates(repoRoot);
 
@@ -71,7 +76,7 @@ export async function interactiveInit(repoRoot: string): Promise<string> {
     }
     const wizard = new Wizard(replay);
     try {
-      const config = await askAll(wizard, repoRoot, existing, folderCandidates);
+      const config = await askAll(wizard, repoRoot, existing, folderCandidates, options.template);
       return writeConfig(repoRoot, config);
     } catch (error) {
       if (!(error instanceof Rewind)) {
@@ -90,7 +95,8 @@ async function askAll(
   wizard: Wizard,
   configDir: string,
   existing: LaneConfig | null,
-  folderCandidates: string[]
+  folderCandidates: string[],
+  template: string | undefined
 ): Promise<LaneConfig> {
   const taskPrefix = await wizard.validated(
     "Task prefix (included literally)",
@@ -115,7 +121,7 @@ async function askAll(
   );
 
   // A fresh workspace gets base suggestions from its folders; command lists are per base.
-  const { bases, plugins } = await promptBases(wizard, configDir, existing?.bases ?? [], folderCandidates);
+  const { bases, plugins } = await promptBases(wizard, configDir, existing?.bases ?? [], folderCandidates, template);
 
   const config: LaneConfig = { taskPrefix, branchPrefix, oldTaskDays, bases };
   const allPlugins = { ...existing?.plugins, ...plugins };
@@ -168,7 +174,8 @@ async function promptBases(
   wizard: Wizard,
   configDir: string,
   current: BaseConfig[],
-  folderCandidates: string[]
+  folderCandidates: string[],
+  template: string | undefined
 ): Promise<{ bases: BaseConfig[]; plugins: Record<string, string> }> {
   console.log("");
   console.log(pc.cyan("Base repositories: each is a git clone that tasks are created from."));
@@ -225,7 +232,7 @@ async function promptBases(
       base.branchPrefix = existingBase.branchPrefix;
     }
 
-    const answer = await promptBaseCommands(wizard, configDir, base, existingBase, bases);
+    const answer = await promptBaseCommands(wizard, configDir, base, existingBase, bases, template);
     for (const list of COMMAND_LISTS) {
       if (answer.lists[list]) {
         base[list] = answer.lists[list];
@@ -255,7 +262,8 @@ async function promptBaseCommands(
   configDir: string,
   base: BaseConfig,
   existingBase: BaseConfig | undefined,
-  earlier: BaseConfig[]
+  earlier: BaseConfig[],
+  template: string | undefined
 ): Promise<CommandsAnswer> {
   console.log("");
   console.log(pc.cyan(`Commands run for tasks in base '${base.name}'`));
@@ -266,10 +274,13 @@ async function promptBaseCommands(
     return { lists: copyLists(copyFrom), source: copyFrom.template };
   }
 
+  // The template given to `lane init`, else the one the base already follows. Lists that
+  // were typed in by hand are kept by default rather than replaced by a template.
+  const suggested = template ?? existingBase?.template ?? (existingBase?.open ? NONE : DEFAULT_TEMPLATE);
   while (true) {
     const answer = await wizard.ask(
       `Command lists to load ('${DEFAULT_TEMPLATE}' for Claude and Terminal tabs, a file path or URL; 'none' to set them up by hand)`,
-      existingBase?.template || DEFAULT_TEMPLATE
+      suggested
     );
     const source = answer === NONE ? "" : answer;
     if (!source) {

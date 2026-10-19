@@ -51,9 +51,14 @@ export interface BaseOption {
   base?: string;
 }
 
-export async function runInitCommand(repoOption?: string): Promise<void> {
+export async function runInitCommand(template: string | undefined, repoOption?: string): Promise<void> {
   const targetDir = path.resolve(repoOption || process.cwd());
-  const configPath = await interactiveInit(targetDir);
+  // Checked before any question, so a mistyped path or URL fails at once. Loads are
+  // cached, so the wizard does not fetch it again.
+  if (template) {
+    await loadCommandsFromSource(template, targetDir);
+  }
+  const configPath = await interactiveInit(targetDir, { template });
   console.log(pc.green(`Created config: ${configPath}`));
   const configDir = path.dirname(configPath);
   for (const base of readConfig(configDir).bases) {

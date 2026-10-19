@@ -88,7 +88,8 @@ program
 program
   .command("init")
   .description("Initialize .lane.json in the current directory")
-  .action(() => runInitCommand(repo()));
+  .argument("[template]", "Command lists to suggest for each base: 'default', a file path or a URL")
+  .action((template: string | undefined) => runInitCommand(template, repo()));
 
 withOpenOptions(
   program

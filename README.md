@@ -27,23 +27,37 @@ the tabs with any command lines, such as `cursor .` or `tmux new-window -c {path
 
 ## Quick start
 
-1. Make sure `git`, `node` (22 or later) and `npm` are installed.
+You need `git`, `node` (22 or later) and `npm`.
 
-2. Install `lane`:
+1. Install `lane`:
 
 ```bash
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/anvk/lane/main/tools/install.sh)"
 ```
 
-3. Initialize a workspace. Each base folder must be a git clone of your project, so clone those first if you have not:
+2. Make a workspace folder and clone the projects you want to work on into it (one or several):
 
 ```bash
-cd /path/to/your/workspace
-lane init
+mkdir ~/work && cd ~/work
+git clone git@github.com:you/app.git app
 ```
 
-When `lane init` asks which command lists to load, press Enter to take `default`: every task opens as two Warp tabs,
-`Claude` and `Terminal`. That is all. Run `lane 1437` to start a task, or `lane` to pick one. The sections below
+3. Set up the workspace with the default Claude and Terminal tabs:
+
+```bash
+lane init default
+```
+
+Press Enter through the questions: `lane init` suggests your clone folder, fills in the template, and offers to install
+the Warp plugin it needs. With several clones, answer `y` to "Add another base repository?" for each one.
+
+4. Start a task:
+
+```bash
+lane 1437
+```
+
+That creates `tasks/app/LANE-1437` on its own branch and opens it. Run `lane` to pick between tasks. The sections below
 explain each step, how updates work, and every command.
 
 ## Install
@@ -90,6 +104,9 @@ A workspace is a folder holding your base clones (for example `api-base/` and `w
 cd /path/to/workspace
 lane init
 ```
+
+`lane init <template>` (for example `lane init default`, or a path or URL) suggests that template for every base, so
+you only press Enter. Without one, `lane init` still suggests `default` for a new base.
 
 `lane init` asks for the task prefix (`LANE-`), the branch prefix (`alex/`), the "old task" threshold, then each base
 in turn: its folder, a short name, the ref to branch from (`origin/main`), its tasks directory (`tasks/<name>`), and
@@ -139,6 +156,7 @@ Outside a terminal (`lane | cat`), `lane` prints the same report as `lane list`.
 
 | Command | What it does |
 | --- | --- |
+| `lane init [template]` | Set up or change the workspace's `.lane.json`, suggesting `template` for each base. |
 | `lane <id>` / `lane task <id>` | Open the task, or create it and open it. The usual way in. |
 | `lane create <id>` | Create only. `--no-open` skips the open commands. Fails if the task exists. |
 | `lane checkout <branch>` | Make a task of an existing branch (see below); opens the task that already has it. |
