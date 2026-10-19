@@ -72,7 +72,7 @@ is not a terminal.
 
 | | |
 | --- | --- |
-| `lane update` | Update now (alias: `lane upgrade`) |
+| `lane update` | Update now |
 | `lane update --check` | Report whether an update is waiting (exits non-zero when behind) |
 | `LANE_NO_AUTO_UPDATE=1` | Turn self-update off |
 

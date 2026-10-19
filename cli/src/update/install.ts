@@ -120,7 +120,7 @@ export function describeVersion(info: InstallInfo): string {
   return packageVersion(info.packageRoot);
 }
 
-const SKIP_COMMANDS = new Set(["update", "upgrade", "version", "doctor", "status", "help"]);
+const SKIP_COMMANDS = new Set(["update", "version", "doctor", "status", "help"]);
 
 // Settings that rule out updating, even when asked for with `lane update`.
 export function settingBlockers(): string[] {

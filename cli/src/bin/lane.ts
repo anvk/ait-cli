@@ -180,7 +180,6 @@ registerPluginCommands(program);
 
 program
   .command("update")
-  .alias("upgrade")
   .description("Update lane now instead of waiting for the next start")
   .option("--check", "Only report whether an update is available")
   .action((options: { check?: boolean }) => runUpdateCommand(options));
