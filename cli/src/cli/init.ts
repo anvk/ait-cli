@@ -21,7 +21,6 @@ import { installedPlugins, validateCommandLine } from "../plugins/registry.js";
 import { lanesWords } from "../hooks/run.js";
 import { shellJoin } from "../hooks/shell.js";
 import { loadCommandsFromSource } from "../hooks/source.js";
-import { DEFAULT_TEMPLATE } from "../hooks/templates.js";
 import { COMMAND_LISTS, type CommandList, type Plugin, type LaneCommands } from "../plugins/types.js";
 import type { BaseConfig, LanesConfig } from "../core/types.js";
 import { errorMessage } from "../core/util.js";
@@ -45,7 +44,7 @@ function loadExistingConfig(repoRoot: string): LanesConfig | null {
 }
 
 export interface InitOptions {
-  // Command lists to suggest for every base: a built-in template name, a path or a URL.
+  // Command lists to suggest for every base: a URL or a path.
   template?: string;
 }
 
@@ -256,7 +255,7 @@ interface CommandsAnswer {
 }
 
 // Three ways to get a base's command lists, cheapest first: copy an earlier base, load a
-// built-in template or a document from a file or URL, or type them in one by one.
+// document from a file or URL, or type them in one by one.
 async function promptBaseCommands(
   wizard: Wizard,
   configDir: string,
@@ -274,12 +273,12 @@ async function promptBaseCommands(
     return { lists: copyLists(copyFrom), source: copyFrom.template };
   }
 
-  // The template given to `lanes init`, else the one the base already follows. Lists that
-  // were typed in by hand are kept by default rather than replaced by a template.
-  const suggested = template ?? existingBase?.template ?? (existingBase?.open ? NONE : DEFAULT_TEMPLATE);
+  // The source given to `lanes init`, else the one the base already follows, else typing
+  // the lists in by hand.
+  const suggested = template ?? existingBase?.template ?? NONE;
   while (true) {
     const answer = await wizard.ask(
-      `Command lists to load (a URL or file path, '${DEFAULT_TEMPLATE}' for Claude and Terminal tabs, or 'none' to set them up by hand)`,
+      "Command lists to load (a URL or file path, or 'none' to set them up by hand)",
       suggested
     );
     const source = answer === NONE ? "" : answer;
