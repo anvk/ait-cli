@@ -27,6 +27,7 @@ import { runUpdateCommand } from "../update/update.js";
 import { registerPluginCommands } from "../plugins/cli.js";
 import { loadPlugins } from "../plugins/load.js";
 import { registerPlugins, setPlugins } from "../plugins/registry.js";
+import { looksLikeTaskId } from "../core/tasks.js";
 import { errorMessage } from "../core/util.js";
 
 const program = new Command();
@@ -72,7 +73,8 @@ function withOpenOptions(command: Command, baseHelp: string): Command {
 
 program
   .name("lane")
-  .description("Manage per-repo task worktrees")
+  .usage("[options] [command] | <taskId>")
+  .description("Run tasks side by side, each in its own git worktree")
   .option("-C, --repo <path>", "Use a specific repository path")
   .version(versionForFlag(), "-v, --version", "Show CLI version")
   .addHelpCommand("help [command]", "Show commands and descriptions")
@@ -134,16 +136,25 @@ program
   .description("List existing task folders")
   .action(() => runListCommand(repo()));
 
-// `lane` on its own opens the picker; `lane --help` still lists the commands.
-// Without this a mistyped command (`lane lst`) would fall through to the default
-// command with the typo as an ignored extra argument, and silently open the picker.
+// `lane` on its own opens the picker, and `lane 1437` is `lane task 1437`; `lane --help`
+// still lists the commands. Only a word shaped like a task id takes the shortcut, so a
+// mistyped command (`lane lst`) fails instead of creating a task named after the typo.
 withOpenOptions(
   program
     .command("tasks", { isDefault: true })
+    .argument("[taskId]", "Open or create this task instead of picking one, e.g. 1437")
     .allowExcessArguments(false)
     .description("Pick a task to open, or create a new one (interactive; the default command)"),
   "Start the picker filtered to one base"
-).action((options: OpenCommandOptions) => runTasksCommand(options, repo()));
+).action((taskId: string | undefined, options: OpenCommandOptions) => {
+  if (taskId === undefined) {
+    return runTasksCommand(options, repo());
+  }
+  if (!looksLikeTaskId(taskId)) {
+    fail(`Unknown command '${taskId}'. To open a task with that name, run: lane task ${taskId}`);
+  }
+  return runTaskCommand(taskId, options, repo());
+});
 
 program
   .command("purge")

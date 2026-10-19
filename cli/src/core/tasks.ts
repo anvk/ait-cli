@@ -18,6 +18,12 @@ export function toTaskName(taskPrefix: string, taskIdOrName: string): string {
   return `${taskPrefix}${cleanTaskIdOrName}`;
 }
 
+// A raw id (`1437`) or a prefixed task name (`LANE-1437`, `ABC-12-fix`). Plain words are
+// left to the command parser, since they are far more likely to be a mistyped command.
+export function looksLikeTaskId(word: string): boolean {
+  return /^\d/.test(word) || /^[A-Za-z]+-\d/.test(word);
+}
+
 export function getTaskPath(repoRoot: string, tasksDir: string, taskName: string): string {
   return path.join(resolveTasksRoot(repoRoot, tasksDir), taskName);
 }

@@ -1,8 +1,13 @@
 # lane
 
-`lane` manages task worktrees for one or more base repositories. `lane task 1437` gives you `tasks/api/LANE-1437`: a git
-worktree on its own branch, with the base's `node_modules` and env files cloned in, and then runs whatever you have
-told it to run for a task: Warp tabs, `cursor .`, a tmux window, anything with a command line.
+**Work on several Claude sessions at once, each in its own lane.** `lane` is a small, fast command-line tool for
+running one to N Claude Code sessions in parallel, across one project or many, without them stepping on each other's
+files or branches.
+
+Every task gets its own git worktree on its own branch. `lane 1437` creates `tasks/api/LANE-1437`, clones in the
+base's `node_modules` and env files so it is ready to run straight away, and opens your setup for it: by default a
+`Claude` tab and a `Terminal` tab in Warp, or anything else with a command line, such as `cursor .` or a tmux window.
+Run `lane` to jump between tasks, and `lane remove 1437` to clean one up when it is merged.
 
 ## Quick start
 
@@ -22,7 +27,7 @@ lane init
 ```
 
 When `lane init` asks which command lists to load, press Enter to take `default`: every task opens as two Warp tabs,
-`Claude` and `Terminal`. That is all. Run `lane` from inside the workspace to pick or create a task. The sections below
+`Claude` and `Terminal`. That is all. Run `lane 1437` to start a task, or `lane` to pick one. The sections below
 explain each step, how updates work, and every command.
 
 ## Install
@@ -89,7 +94,8 @@ commands refuse to run until it is.
 
 ## Daily use
 
-Run `lane` anywhere inside the workspace to open the picker over your tasks:
+Run `lane <id>` anywhere inside the workspace to go straight to a task (creating it if needed), or `lane` on its own
+to open the picker over your tasks:
 
 | Key | In the search field | In the list |
 | --- | --- | --- |
@@ -117,7 +123,7 @@ Outside a terminal (`lane | cat`), `lane` prints the same report as `lane list`.
 
 | Command | What it does |
 | --- | --- |
-| `lane task <id>` | Open the task, or create it and open it. The usual way in. |
+| `lane <id>` / `lane task <id>` | Open the task, or create it and open it. The usual way in. |
 | `lane create <id>` | Create only. `--no-open` skips the open commands. Fails if the task exists. |
 | `lane checkout <branch>` | Make a task of an existing branch (see below); opens the task that already has it. |
 | `lane open <id>` | Run the open commands for an existing task. |
@@ -131,7 +137,11 @@ Outside a terminal (`lane | cat`), `lane` prints the same report as `lane list`.
 | `lane doctor` / `lane status` | Check the install, config, bases, plugins, the commands and their programs, and leftovers. |
 | `lane update [--check]` | Update lane now. |
 
-`<id>` is a raw id (`1437`) or a full task name (`LANE-1437`). Flags shared by the commands that open tasks:
+`<id>` is a raw id (`1437`) or a full task name (`LANE-1437`). The `lane <id>` shortcut takes only words that start
+with a digit or look like `PREFIX-<digit>…`, so a mistyped command such as `lane lst` fails instead of creating a task.
+For a task with any other name, use `lane task <name>`.
+
+Flags shared by the commands that open tasks:
 
 - `--base <name>`: which base. Required to create or check out in a workspace with several bases; for an existing
   task, only needed when the name exists in more than one.
