@@ -31,13 +31,35 @@ const PLACEHOLDERS: Record<string, (ctx: LaneContext) => string> = {
   root: (ctx) => ctx.root
 };
 
-// `{lane}` and friends become shell-quoted values. A line that starts with `lanes` runs
-// this same lanes, so a config works when `lanes` is not on PATH (and under tests).
+// `{lane}` and friends become their values, quoted to fit where they stand: shell-quoted
+// when bare, escaped for a double-quoted string inside "…", and spliced out of a '…'
+// string, so `cd {path}` and `echo "{path}"` both work for a folder with spaces. A line
+// that starts with `lanes` runs this same lanes, so a config works when `lanes` is not on
+// PATH (and under tests).
 export function substitute(line: string, ctx: LaneContext): string {
-  const expanded = line.replace(/\{(lane|path|branch|base|root)\}/g, (_match, name: string) =>
-    shellQuote(PLACEHOLDERS[name](ctx))
-  );
-  return isLanesLine(expanded) ? `${selfCommand()} ${expanded.trimStart().slice("lanes".length)}` : expanded;
+  let out = "";
+  let quote: "'" | '"' | null = null;
+  for (let i = 0; i < line.length; i += 1) {
+    const placeholder = /^\{(lane|path|branch|base|root)\}/.exec(line.slice(i));
+    if (placeholder) {
+      const value = PLACEHOLDERS[placeholder[1]](ctx);
+      out +=
+        quote === '"' ? value.replace(/(["\\$`])/g, "\\$1") : quote === "'" ? `'${shellQuote(value)}'` : shellQuote(value);
+      i += placeholder[0].length - 1;
+      continue;
+    }
+    const char = line[i];
+    if (char === "\\" && quote !== "'" && i + 1 < line.length) {
+      out += char + line[i + 1];
+      i += 1;
+      continue;
+    }
+    if ((char === "'" || char === '"') && (quote === null || quote === char)) {
+      quote = quote === null ? char : null;
+    }
+    out += char;
+  }
+  return isLanesLine(out) ? `${selfCommand()} ${out.trimStart().slice("lanes".length)}` : out;
 }
 
 export function isLanesLine(line: string): boolean {

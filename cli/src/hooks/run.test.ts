@@ -83,3 +83,13 @@ test("the lane reaches commands through LANES_* variables", () => {
     LANE_CREATED: "1"
   });
 });
+
+test("placeholders survive the shell bare, in double quotes and in single quotes", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const tricky = { ...ctx, lanePath: `/w/my lanes/it's a "$HOME" lane` };
+  for (const line of ["printf %s {path}", 'printf %s "{path}"', "printf %s '{path}'", 'printf %s "dir: {path}!"']) {
+    const out = spawnSync("sh", ["-c", substitute(line, tricky)], { encoding: "utf8" }).stdout;
+    const expected = line.includes("dir: ") ? `dir: ${tricky.lanePath}!` : tricky.lanePath;
+    assert.equal(out, expected, line);
+  }
+});

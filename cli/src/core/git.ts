@@ -1,7 +1,7 @@
 import { execFile, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { promisify } from "node:util";
-import { run, runInteractive } from "./process.js";
+import { run, runAllowFailure, runInteractive } from "./process.js";
 import { errorMessage } from "./util.js";
 
 const LOCAL_PREFIX = "refs/heads/";
@@ -29,8 +29,16 @@ export function gitList(cwd: string, args: string[]): string[] {
     .filter(Boolean);
 }
 
-export function fetchOrigin(repoRoot: string): void {
-  runInteractive("git", ["fetch", "origin"], { cwd: repoRoot });
+// Fetches only the branch `ref` names on origin (`origin/main` fetches `main`), which is
+// all a new lane needs; a whole-remote fetch costs much more on a busy repository. A ref
+// that is not an origin branch (a local branch, a tag) needs no fetch.
+export function fetchRefFromOrigin(repoRoot: string, ref: string): boolean {
+  const branch = /^origin\/(.+)$/.exec(ref)?.[1];
+  if (!branch) {
+    return false;
+  }
+  runInteractive("git", ["fetch", "origin", branch], { cwd: repoRoot });
+  return true;
 }
 
 // A repository made locally (`git init`, a project generator) has no `origin`; lanes then
@@ -43,8 +51,11 @@ export function hasOrigin(repoRoot: string): boolean {
   }
 }
 
-export function rebaseCurrentBranchOnto(repoRoot: string, baseRef: string): void {
-  runInteractive("git", ["rebase", "--autostash", baseRef], { cwd: repoRoot });
+// Moves the base checkout forward to `ref`. Only a fast-forward: the clean check has made
+// sure the base holds nothing that is not on `ref`, and if that ever stops being true
+// this refuses instead of rewriting anything. Returns false when it could not move.
+export function fastForwardTo(repoRoot: string, ref: string): boolean {
+  return runAllowFailure("git", ["merge", "--ff-only", "--quiet", ref], { cwd: repoRoot }).status === 0;
 }
 
 // Whether `ref` resolves to a commit, e.g. a base's `origin/main` before any fetch.

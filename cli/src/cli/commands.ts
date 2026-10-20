@@ -9,17 +9,14 @@ import { baseNames, findBase, readConfig, resolveBaseCommands, writeConfig } fro
 import { listPrunableWorktrees, pruneWorktrees } from "../core/git.js";
 import { interactiveInit } from "./init.js";
 import {
-  askToRunSetup,
-  checkoutAndOpen,
-  confirmAndRemoveLane,
   createLaneFolder,
   deleteLane,
   describeBranchHolders,
   openLane,
-  promptForExactConfirmation,
   type ForceOption,
   type OpenOptions
 } from "../core/lifecycle.js";
+import { askToRunSetup, checkoutAndOpen, confirmAndRemoveLane, promptForExactConfirmation } from "./flows.js";
 import { pickLane, type PickerItem } from "../ui/picker.js";
 import { ensurePlugins } from "../plugins/ensure.js";
 import { findLeftovers } from "../plugins/registry.js";

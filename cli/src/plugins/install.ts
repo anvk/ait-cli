@@ -74,13 +74,16 @@ function lanesCheckoutFor(url: string): string | null {
   return origin.status === 0 && normalizeGitUrl(origin.stdout) === normalizeGitUrl(url) ? paths.gitRoot : null;
 }
 
-// `npm install` and the package's build script, in the plugin folder. Returns a reason on
-// failure. A previous build is kept aside and restored if the new one fails.
+// Installs the plugin's dependencies and runs its build script, in the plugin folder.
+// Returns a reason on failure. A previous build is kept aside and restored if the new one
+// fails. With a lockfile it is `npm ci`, which installs exactly that and leaves a cloned
+// plugin's checkout clean for the next update; a plugin without one gets `npm install`.
 export function buildPlugin(dir: string): string | null {
   const pkg = pluginPackage(dir);
-  const installed = runAllowFailure("npm", ["install", "--no-audit", "--no-fund", "--silent"], { cwd: dir, timeout: BUILD_TIMEOUT_MS });
+  const verb = fs.existsSync(path.join(dir, "package-lock.json")) ? "ci" : "install";
+  const installed = runAllowFailure("npm", [verb, "--no-audit", "--no-fund", "--silent"], { cwd: dir, timeout: BUILD_TIMEOUT_MS });
   if (installed.status !== 0) {
-    return `npm install failed: ${(installed.stderr || installed.stdout).split("\n").find(Boolean) ?? "no output"}`;
+    return `npm ${verb} failed: ${(installed.stderr || installed.stdout).split("\n").find(Boolean) ?? "no output"}`;
   }
   if (!pkg.scripts?.build) {
     return null;

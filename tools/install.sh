@@ -59,7 +59,9 @@ fi
 
 cd "$LANES_PROJECT_DIR"
 say "Installing dependencies"
-npm install
+# npm ci installs exactly the lockfile and never rewrites it, so the checkout stays clean
+# and self-update can keep moving it.
+npm ci
 
 say "Building lanes"
 npm run build

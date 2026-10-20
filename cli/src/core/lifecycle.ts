@@ -1,7 +1,5 @@
 // Creating, checking out, opening and deleting a single lane.
-import fs from "node:fs";
 import path from "node:path";
-import { stdin as input } from "node:process";
 import pc from "picocolors";
 import { resolveBaseCommands, resolveBranchPrefix } from "./config.js";
 import {
@@ -9,22 +7,21 @@ import {
   createOrAttachWorktree,
   currentBranch,
   deleteLocalBranch,
-  fetchOrigin,
+  fastForwardTo,
+  fetchRefFromOrigin,
   fetchRemoteBranch,
   hasOrigin,
   inspectBaseWorkingState,
   isBaseWorkingStateClean,
   listWorktreeBranches,
   localBranchExists,
-  rebaseCurrentBranchOnto,
   refResolves,
-  removeWorktree,
-  uncommittedPaths
+  removeWorktree
 } from "./git.js";
 import { ensureLanesDir, getLanePath, listLaneFolders, syncBaseFolderIntoLane, toLaneName } from "./lanes.js";
 import type { BaseConfig, LanesConfig } from "./types.js";
-import { ask, realpathOrSelf } from "./util.js";
-import { closeCurrentTab, forgetLane, setupCommandsOf } from "../plugins/registry.js";
+import { realpathOrSelf } from "./util.js";
+import { closeCurrentTab, forgetLane } from "../plugins/registry.js";
 import { runList } from "../hooks/run.js";
 import type { LaneContext } from "../plugins/types.js";
 import { locateInBase, resolveBaseRepoRoot, laneIdentity, type LaneLocation } from "./workspace.js";
@@ -80,7 +77,7 @@ function laneBranchName(config: LanesConfig, base: BaseConfig, laneName: string)
 
 // Long file lists in the not-clean report are cut off; the point is to name the base,
 // not to reprint `git status`.
-const MAX_LISTED_DIRTY_ITEMS = 10;
+export const MAX_LISTED_DIRTY_ITEMS = 10;
 
 function describeDirtyItems(label: string, items: string[]): string[] {
   if (items.length === 0) {
@@ -164,20 +161,22 @@ export function createLaneFolder(
   const { base, laneName, lanePath } = location;
   const baseRepoRoot = resolveBaseRepoRoot(configDir, base);
 
-  if (hasOrigin(baseRepoRoot)) {
-    console.log(pc.cyan(`Fetching origin in ${base.folder}...`));
-    fetchOrigin(baseRepoRoot);
-  } else {
+  if (!hasOrigin(baseRepoRoot)) {
     console.log(pc.dim(`${base.folder} has no 'origin' remote, so nothing is fetched.`));
+  } else if (/^origin\//.test(base.ref)) {
+    console.log(pc.cyan(`Fetching ${base.ref} in ${base.folder}...`));
+    fetchRefFromOrigin(baseRepoRoot, base.ref);
   }
   assertBaseRefExists(base, baseRepoRoot);
-  // Checked after the fetch, so `base.ref` is current, and before the rebase, so
-  // `--autostash` cannot hide uncommitted changes by tucking them away and back.
+  // Checked after the fetch, so `base.ref` is current.
   assertBaseIsClean(base, baseRepoRoot, options);
 
   ensureLanesDir(configDir, base.lanesDir);
-  console.log(pc.cyan(`Rebasing ${base.folder} onto ${base.ref}...`));
-  rebaseCurrentBranchOnto(baseRepoRoot, base.ref);
+  // The base is brought up to `ref` so the dependencies copied from it match the new lane.
+  console.log(pc.cyan(`Updating ${base.folder} to ${base.ref}...`));
+  if (!fastForwardTo(baseRepoRoot, base.ref)) {
+    console.log(pc.yellow(`${base.folder} could not fast-forward to ${base.ref} (it has work of its own); left as it is.`));
+  }
   console.log(pc.cyan(`Creating ${laneName} from ${base.ref}...`));
   createOrAttachWorktree({
     repoRoot: baseRepoRoot,
@@ -243,7 +242,7 @@ export function describeBranchHolders(
 
 // Makes a lane of an existing branch, or finds the lane that already has it. Only that
 // one branch is fetched, and only when a lane is about to be made of it.
-function checkoutBranchLane(
+export function checkoutBranchLane(
   configDir: string,
   config: LanesConfig,
   base: BaseConfig,
@@ -300,37 +299,6 @@ function checkoutBranchLane(
   return { location: { ...location, exists: true }, created: true };
 }
 
-export async function checkoutAndOpen(
-  configDir: string,
-  config: LanesConfig,
-  base: BaseConfig,
-  branchName: string,
-  options: OpenOptions & ForceOption
-): Promise<void> {
-  const { location, created } = checkoutBranchLane(configDir, config, base, branchName, options);
-  const runSetup = created ? await askToRunSetup(config, base) : false;
-  openLane(configDir, config, location, { ...options, created, runSetup });
-}
-
-// Asked once per new lane, and only when there is something to run: the base's `create`
-// list, or a setup command carried by one of its `open` lines (a Warp tab's --setup).
-export async function askToRunSetup(config: LanesConfig, base: BaseConfig): Promise<boolean> {
-  const lists = resolveBaseCommands(config, base);
-  const commands = [...lists.open.flatMap(setupCommandsOf), ...lists.create];
-  if (commands.length === 0 || !input.isTTY) {
-    return false;
-  }
-  const answer = await ask(`Run the env setup script (${commands.join(", ")})? [y/N] `);
-  return /^y(es)?$/i.test(answer.trim());
-}
-
-export async function promptForExactConfirmation(prompt: string, expected: string): Promise<void> {
-  const answer = (await ask(`${prompt}\n> `)).trim();
-  if (answer !== expected) {
-    throw new Error("Confirmation text did not match. Aborting.");
-  }
-}
-
 // The branch a lane is on, read from its worktree rather than rebuilt from its name, so
 // a lane checked out from someone else's branch still removes the right one. A lane left
 // detached falls back to the branch lanes would have created for it.
@@ -358,21 +326,3 @@ export function deleteLane(configDir: string, config: LanesConfig, location: Lan
   forgetLane(laneIdentity(config, location.base, location.laneName).key);
 }
 
-export async function confirmAndRemoveLane(configDir: string, config: LanesConfig, location: LaneLocation): Promise<void> {
-  const baseRepoRoot = resolveBaseRepoRoot(configDir, location.base);
-  if (!fs.existsSync(location.lanePath)) {
-    throw new Error(`Lane folder does not exist: ${location.lanePath}`);
-  }
-
-  const { label } = laneIdentity(config, location.base, location.laneName);
-  // Say what would be lost before asking: removal discards uncommitted changes.
-  const changed = await uncommittedPaths(location.lanePath);
-  if (changed && changed.length > 0) {
-    const shown = changed.slice(0, MAX_LISTED_DIRTY_ITEMS).map((p) => `    ${p}`);
-    const more = changed.length > shown.length ? [`    ...and ${changed.length - shown.length} more`] : [];
-    console.log(pc.red([`  ${label} has ${changed.length} file(s) with uncommitted changes, which removal discards:`, ...shown, ...more].join("\n")));
-  }
-  await promptForExactConfirmation(`Type 'delete' to permanently remove the lane worktree ${label}:`, "delete");
-  deleteLane(configDir, config, location, baseRepoRoot);
-  console.log(pc.green(`Removed lane: ${location.lanePath}`));
-}
