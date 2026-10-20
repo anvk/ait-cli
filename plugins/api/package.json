@@ -2,6 +2,7 @@
   "name": "lanes-plugin-api",
   "version": "1.0.0",
   "description": "The interface a lanes plugin implements, and the environment lanes gives a lane's commands",
+  "license": "MIT",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",

@@ -2,6 +2,7 @@
   "name": "lanes-plugin-warp",
   "version": "0.1.0",
   "description": "lanes plugin: open a lane's folders as Warp tabs",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "lanes": {
