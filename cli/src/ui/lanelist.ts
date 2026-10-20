@@ -4,7 +4,7 @@ import fs from "node:fs";
 import pc from "picocolors";
 import { formatRelativeTime, paintBase } from "../core/format.js";
 import { lastCommit, uncommittedPaths } from "../core/git.js";
-import { getLaneActivityMs, getLanePath, listLaneFolders, resolveLanesRoot } from "../core/lanes.js";
+import { getLaneActivityMs, lanesInWorkspace, resolveLanesRoot } from "../core/lanes.js";
 import { charLength, paintLine, type Paint, type Segment } from "./tui.js";
 import type { LanesConfig } from "../core/types.js";
 import { DAY_MS, mapLimit } from "../core/util.js";
@@ -41,13 +41,7 @@ const GATHER_CONCURRENCY = 8;
 
 // Most recently active first.
 export async function gatherLaneDisplayItems(configDir: string, config: LanesConfig): Promise<LaneDisplayItem[]> {
-  const lanes = config.bases.flatMap((base) =>
-    listLaneFolders(configDir, base.lanesDir, config.lanePrefix).map((laneName) => ({
-      laneName,
-      lanePath: getLanePath(configDir, base.lanesDir, laneName),
-      baseName: base.name
-    }))
-  );
+  const lanes = lanesInWorkspace(configDir, config);
   const items = await mapLimit(lanes, GATHER_CONCURRENCY, async (lane) => {
     const [changed, commit] = await Promise.all([uncommittedPaths(lane.lanePath), lastCommit(lane.lanePath)]);
     return {

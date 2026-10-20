@@ -3,6 +3,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { copyPaths, type CopyPair, type CopyStrategy } from "./copy.js";
 import { gitList, lastCommit } from "./git.js";
+import type { LanesConfig } from "./types.js";
 import { isDirectory } from "./util.js";
 
 export function toLaneName(lanePrefix: string, laneIdOrName: string): string {
@@ -163,6 +164,23 @@ function copyEveryEntry(sourceRoot: string, destinationRoot: string): number {
     count += 1;
   }
   return count;
+}
+
+export interface LaneFolder {
+  laneName: string;
+  lanePath: string;
+  baseName: string;
+}
+
+// Every lane folder of every base in the workspace, each with its path and base.
+export function lanesInWorkspace(configDir: string, config: LanesConfig): LaneFolder[] {
+  return config.bases.flatMap((base) =>
+    listLaneFolders(configDir, base.lanesDir, config.lanePrefix).map((laneName) => ({
+      laneName,
+      lanePath: getLanePath(configDir, base.lanesDir, laneName),
+      baseName: base.name
+    }))
+  );
 }
 
 export function listLaneFolders(repoRoot: string, lanesDir: string, lanePrefix: string): string[] {

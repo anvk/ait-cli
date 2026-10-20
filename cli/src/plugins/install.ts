@@ -78,7 +78,7 @@ function lanesCheckoutFor(url: string): string | null {
 // Returns a reason on failure. A previous build is kept aside and restored if the new one
 // fails. With a lockfile it is `npm ci`, which installs exactly that and leaves a cloned
 // plugin's checkout clean for the next update; a plugin without one gets `npm install`.
-export function buildPlugin(dir: string): string | null {
+function buildPlugin(dir: string): string | null {
   const pkg = pluginPackage(dir);
   const verb = fs.existsSync(path.join(dir, "package-lock.json")) ? "ci" : "install";
   const installed = runAllowFailure("npm", [verb, "--no-audit", "--no-fund", "--silent"], { cwd: dir, timeout: BUILD_TIMEOUT_MS });

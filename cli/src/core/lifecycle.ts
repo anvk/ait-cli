@@ -18,7 +18,7 @@ import {
   refResolves,
   removeWorktree
 } from "./git.js";
-import { ensureLanesDir, getLanePath, listLaneFolders, syncBaseFolderIntoLane, toLaneName } from "./lanes.js";
+import { ensureLanesDir, lanesInWorkspace, syncBaseFolderIntoLane, toLaneName } from "./lanes.js";
 import type { BaseConfig, LanesConfig } from "./types.js";
 import { realpathOrSelf } from "./util.js";
 import { closeCurrentTab, forgetLane } from "../plugins/registry.js";
@@ -224,10 +224,9 @@ export function describeBranchHolders(
   baseRepoRoot: string
 ): Map<string, BranchHolder> {
   const laneNamesByPath = new Map(
-    listLaneFolders(configDir, base.lanesDir, config.lanePrefix).map((laneName) => [
-      realpathOrSelf(getLanePath(configDir, base.lanesDir, laneName)),
-      laneName
-    ])
+    lanesInWorkspace(configDir, config)
+      .filter((lane) => lane.baseName === base.name)
+      .map((lane) => [realpathOrSelf(lane.lanePath), lane.laneName])
   );
   const holders = new Map<string, BranchHolder>();
   for (const [branchName, worktreePath] of listWorktreeBranches(baseRepoRoot)) {

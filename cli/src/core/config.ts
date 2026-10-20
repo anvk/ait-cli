@@ -1,16 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { shellJoin, shellQuote } from "../hooks/shell.js";
 import { validateCommandLine } from "../plugins/registry.js";
 import { COMMAND_LISTS, type CommandList, type LaneCommands } from "../plugins/types.js";
 import type { BaseConfig, LanesConfig } from "./types.js";
 
 export const CONFIG_FILE = ".lanes.json";
-
-// The one plugin lanes knows by name, and only here: a config written before command lists
-// (`warpTabs`) can only mean Warp, so its conversion also says where Warp comes from.
-export const WARP_PLUGIN_SOURCE = "https://github.com/anvk/lanes.git#plugins/warp";
-const LEGACY_WARP_COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"];
 
 // A command document, or the part of a config that one can replace.
 export type CommandDocument = Partial<LaneCommands> & { plugins?: Record<string, string> };
@@ -94,23 +88,15 @@ export function resolveBranchPrefix(config: LanesConfig, base: BaseConfig): stri
 export function normalizeConfig(input: unknown): LanesConfig {
   const inputRecord = (input ?? {}) as Record<string, unknown>;
   const oldLaneDays = parsePositiveInt(inputRecord.oldLaneDays, "oldLaneDays");
-  // `warpTabGroup` predates command lists; it becomes `--group` on every converted tab.
-  const group = parseBoolean(inputRecord.warpTabGroup, "warpTabGroup");
-  const bases = parseBases(inputRecord, group);
+  const bases = parseBases(inputRecord);
   const config: LanesConfig = {
     lanePrefix: String(inputRecord.lanePrefix ?? DEFAULT_CONFIG.lanePrefix).trim(),
     branchPrefix: String(inputRecord.branchPrefix ?? DEFAULT_CONFIG.branchPrefix).trim(),
     oldLaneDays,
     bases,
-    ...parseCommandLists(inputRecord, "", group)
+    ...parseCommandLists(inputRecord, "")
   };
   const plugins = parsePlugins(inputRecord.plugins, "plugins");
-  const legacyWarp =
-    inputRecord.warpTabs !== undefined ||
-    (Array.isArray(inputRecord.bases) && inputRecord.bases.some((entry) => isRecord(entry) && entry.warpTabs !== undefined));
-  if (legacyWarp && !plugins.warp) {
-    plugins.warp = WARP_PLUGIN_SOURCE;
-  }
   if (Object.keys(plugins).length > 0) {
     config.plugins = plugins;
   }
@@ -136,7 +122,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // `"plugins": { "<name>": "<git URL or path>" }`.
-export function parsePlugins(value: unknown, label: string): Record<string, string> {
+function parsePlugins(value: unknown, label: string): Record<string, string> {
   if (value == null) {
     return {};
   }
@@ -156,10 +142,7 @@ export function parsePlugins(value: unknown, label: string): Record<string, stri
   return plugins;
 }
 
-function parseBases(record: Record<string, unknown>, group: boolean): BaseConfig[] {
-  if (record.bases == null && record.baseFolder != null) {
-    throw new Error("This .lanes.json uses the format from before multiple bases. Run `lanes init` to rewrite it.");
-  }
+function parseBases(record: Record<string, unknown>): BaseConfig[] {
   if (!Array.isArray(record.bases)) {
     throw new Error("Config `bases` must be an array of base definitions.");
   }
@@ -167,7 +150,7 @@ function parseBases(record: Record<string, unknown>, group: boolean): BaseConfig
     throw new Error("Config `bases` must define at least one base.");
   }
 
-  const bases = record.bases.map((entry, index) => parseBase(entry, index, group));
+  const bases = record.bases.map((entry, index) => parseBase(entry, index));
 
   const seenNames = new Set<string>();
   for (const base of bases) {
@@ -197,7 +180,7 @@ function isSameOrInside(childDir: string, parentDir: string): boolean {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function parseBase(entry: unknown, index: number, group: boolean): BaseConfig {
+function parseBase(entry: unknown, index: number): BaseConfig {
   const label = `bases[${index}]`;
   if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
     throw new Error(`Config \`${label}\` must be an object.`);
@@ -236,10 +219,9 @@ function parseBase(entry: unknown, index: number, group: boolean): BaseConfig {
     base.branchPrefix = record.branchPrefix.trim();
   }
 
-  Object.assign(base, parseCommandLists(record, `${label}.`, group));
+  Object.assign(base, parseCommandLists(record, `${label}.`));
 
-  // `warpTabsSource` is the name from before lists other than Warp tabs existed.
-  const source = record.template ?? record.warpTabsSource;
+  const source = record.template;
   if (source != null && source !== "") {
     if (typeof source !== "string") {
       throw new Error(`Config \`${label}.template\` must be a string (file path or URL).`);
@@ -250,21 +232,12 @@ function parseBase(entry: unknown, index: number, group: boolean): BaseConfig {
   return base;
 }
 
-// The `open`, `create` and `remove` lists of a config or a base, or of a document. A
-// `warpTabs` list from before (each tab an object) becomes `lanes warp tab` lines, and its
-// `teardownCommand`s become `remove` lines, so older configs and documents still read.
-export function parseCommandLists(record: Record<string, unknown>, prefix: string, group: boolean): Partial<LaneCommands> {
+// The `open`, `create` and `remove` lists of a config, a base, or a document.
+function parseCommandLists(record: Record<string, unknown>, prefix: string): Partial<LaneCommands> {
   const lists: Partial<LaneCommands> = {};
   for (const list of COMMAND_LISTS) {
     if (record[list] != null) {
       lists[list] = parseCommandList(record[list], `${prefix}${list}`);
-    }
-  }
-  if (record.warpTabs !== undefined && lists.open === undefined) {
-    const converted = legacyTabsToCommands(record.warpTabs, `${prefix}warpTabs`, group);
-    lists.open = converted.open;
-    if (converted.remove.length > 0 && lists.remove === undefined) {
-      lists.remove = converted.remove;
     }
   }
   return lists;
@@ -284,9 +257,9 @@ function parseCommandList(value: unknown, label: string): string[] {
   });
 }
 
-// A document is a JSON object with any of `open`, `create` and `remove`, or one of the
-// older forms: a bare array of Warp tabs, or an object with `warpTabs`. Anything else in
-// the object is ignored, so another workspace's .lanes.json works as a source too.
+// A document is a JSON object with any of `open`, `create` and `remove` (and `plugins`), or
+// a bare array of `open` lines. Anything else in the object is ignored, so another
+// workspace's .lanes.json works as a source too.
 export function parseOpenDocument(text: string, label: string): CommandDocument {
   let parsed: unknown;
   try {
@@ -295,22 +268,11 @@ export function parseOpenDocument(text: string, label: string): CommandDocument 
     throw new Error(`${label} is not valid JSON.`);
   }
   if (Array.isArray(parsed)) {
-    if (parsed.every((entry) => typeof entry === "string")) {
-      return { open: parseCommandList(parsed, label) };
-    }
-    const converted = legacyTabsToCommands(parsed, label, false);
-    return {
-      open: converted.open,
-      ...(converted.remove.length > 0 ? { remove: converted.remove } : {}),
-      plugins: { warp: WARP_PLUGIN_SOURCE }
-    };
+    return { open: parseCommandList(parsed, label) };
   }
   if (isRecord(parsed)) {
-    const document: CommandDocument = parseCommandLists(parsed, `${label}.`, parseBoolean(parsed.warpTabGroup, `${label}.warpTabGroup`));
+    const document: CommandDocument = parseCommandLists(parsed, `${label}.`);
     const plugins = parsePlugins(parsed.plugins, `${label}.plugins`);
-    if (parsed.warpTabs !== undefined && !plugins.warp) {
-      plugins.warp = WARP_PLUGIN_SOURCE;
-    }
     if (Object.keys(plugins).length > 0) {
       document.plugins = plugins;
     }
@@ -321,80 +283,8 @@ export function parseOpenDocument(text: string, label: string): CommandDocument 
   throw new Error(`${label} must be a JSON object with "open", "create" or "remove" command lists.`);
 }
 
-function legacyTabsToCommands(value: unknown, label: string, group: boolean): { open: string[]; remove: string[] } {
-  if (!Array.isArray(value)) {
-    throw new Error(`Config \`${label}\` must be an array of tab definitions.`);
-  }
-  const open: string[] = [];
-  const remove: string[] = [];
-  value.forEach((entry, index) => {
-    const tab = parseLegacyTab(entry, `${label}[${index}]`);
-    open.push(shellJoin([...tab.words, ...(group ? ["--group"] : [])]));
-    if (tab.teardown) {
-      remove.push(tab.path === "." ? tab.teardown : `cd ${shellQuote(tab.path)} && ${tab.teardown}`);
-    }
-  });
-  return { open, remove };
-}
-
-// One tab object of the old format as the words of a `lanes warp tab …` line. Only the
-// shape is checked here; the Warp plugin validates the line once it is installed.
-function parseLegacyTab(entry: unknown, label: string): { words: string[]; path: string; teardown?: string } {
-  if (!isRecord(entry)) {
-    throw new Error(`Config \`${label}\` must be an object.`);
-  }
-  const title = typeof entry.title === "string" ? entry.title.trim() : "";
-  if (!title) {
-    throw new Error(`Config \`${label}.title\` must be a non-empty string.`);
-  }
-  const rawPath = typeof entry.path === "string" ? entry.path.trim() : "";
-  if (!rawPath) {
-    throw new Error(`Config \`${label}.path\` must be a non-empty string (use "." for the lane root).`);
-  }
-  const tabPath = path.normalize(rawPath).replace(/(.)\/+$/, "$1");
-  const words = ["lanes", "warp", "tab", title];
-  if (tabPath !== ".") {
-    words.push("--path", tabPath);
-  }
-  if (entry.color != null && entry.color !== "") {
-    const color = String(entry.color).trim().toLowerCase();
-    if (!LEGACY_WARP_COLORS.includes(color)) {
-      throw new Error(`Config \`${label}.color\` must be one of: ${LEGACY_WARP_COLORS.join(", ")} (Warp only supports these tab colors).`);
-    }
-    words.push("--color", color);
-  }
-  for (const [field, flag] of [
-    ["command", "--command"],
-    ["setupCommand", "--setup"]
-  ] as const) {
-    const value = entry[field];
-    if (value == null || value === "") {
-      continue;
-    }
-    if (typeof value !== "string") {
-      throw new Error(`Config \`${label}.${field}\` must be a string.`);
-    }
-    words.push(flag, value.trim());
-  }
-  const teardown = entry.teardownCommand;
-  if (teardown != null && teardown !== "" && typeof teardown !== "string") {
-    throw new Error(`Config \`${label}.teardownCommand\` must be a string.`);
-  }
-  return { words, path: tabPath, teardown: typeof teardown === "string" && teardown.trim() ? teardown.trim() : undefined };
-}
-
 export function listLabel(list: CommandList): string {
   return { open: "when a lane opens", create: "once after a lane is created", remove: "before a lane is removed" }[list];
-}
-
-function parseBoolean(value: unknown, fieldName: string): boolean {
-  if (value == null) {
-    return false;
-  }
-  if (typeof value === "boolean") {
-    return value;
-  }
-  throw new Error(`Config \`${fieldName}\` must be true or false.`);
 }
 
 function parsePositiveInt(value: unknown, fieldName: string): number {

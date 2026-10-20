@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { parseOpenDocument, type CommandDocument } from "../core/config.js";
 import { commandExists, run } from "../core/process.js";
 import { errorMessage } from "../core/util.js";
+import { expandHome } from "../core/paths.js";
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -52,8 +52,7 @@ function copyLists(document: CommandDocument): CommandDocument {
 }
 
 function readLocalFile(source: string, cwd: string): string {
-  const expanded = source.startsWith("~") ? path.join(os.homedir(), source.slice(1)) : source;
-  const resolved = path.resolve(cwd, expanded);
+  const resolved = path.resolve(cwd, expandHome(source));
   if (!fs.existsSync(resolved)) {
     throw new Error(`file not found: ${resolved}`);
   }

@@ -163,7 +163,6 @@ program
 
 program
   .command("commands")
-  .alias("tabs")
   .description("Manage the command lists run for each base's lanes")
   .command("update")
   .description("Re-fetch each base's command lists from its recorded template and save any changes")

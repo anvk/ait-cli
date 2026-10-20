@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WARP_PLUGIN_SOURCE, normalizeConfig, parseOpenDocument, resolveBaseCommands } from "./config.js";
+import { normalizeConfig, parseOpenDocument, resolveBaseCommands } from "./config.js";
 import { setPlugins } from "../plugins/registry.js";
 import type { Plugin } from "../plugins/types.js";
 
@@ -97,41 +97,6 @@ test("plugins map names to where to install them", () => {
   assert.throws(() => normalizeConfig({ plugins: { warp: "" }, bases: [base("api")] }), /git URL or a path/);
 });
 
-test("a warpTabs list from before becomes lanes warp tab lines, and says where Warp comes from", () => {
-  const config = normalizeConfig({
-    warpTabGroup: true,
-    bases: [
-      base("api", {
-        open: undefined,
-        warpTabs: [
-          { title: "API", path: "server/", color: "RED", setupCommand: "make dev", teardownCommand: "make down" },
-          { title: "CLI", path: "." },
-          { title: "Claude", path: ".", color: "yellow", command: "claude --continue", teardownCommand: "echo bye" }
-        ],
-        warpTabsSource: "https://example.com/tabs.json"
-      })
-    ]
-  });
-  const [api] = config.bases;
-  assert.deepEqual(api.open, [
-    "lanes warp tab API --path server --color red --setup 'make dev' --group",
-    "lanes warp tab CLI --group",
-    "lanes warp tab Claude --color yellow --command 'claude --continue' --group"
-  ]);
-  assert.deepEqual(api.remove, ["cd server && make down", "echo bye"]);
-  assert.equal(api.template, "https://example.com/tabs.json");
-  assert.deepEqual(config.plugins, { warp: WARP_PLUGIN_SOURCE });
-  assert.equal("warpTabs" in api, false);
-  assert.equal("warpTabGroup" in config, false);
-});
-
-test("old tabs are still validated", () => {
-  const withTab = (warpTab: Record<string, unknown>) =>
-    normalizeConfig({ bases: [base("api", { open: undefined, warpTabs: [warpTab] })] });
-  assert.throws(() => withTab({ title: "", path: "." }), /title/);
-  assert.throws(() => withTab({ title: "A", path: ".", color: "purple" }), /must be one of/);
-});
-
 test("duplicate base names are rejected", () => {
   assert.throws(() => normalizeConfig({ bases: [base("api"), base("api")] }), /more than one base named 'api'/);
 });
@@ -152,28 +117,17 @@ test("oldLaneDays must be a positive integer", () => {
   assert.throws(() => normalizeConfig({ oldLaneDays: 0, bases: [base("api")] }), /positive integer/);
 });
 
-test("a document holds command lists and plugin sources, or the older tab forms", () => {
+test("a document holds command lists and plugin sources, or a bare list of open lines", () => {
   assert.deepEqual(
     parseOpenDocument(JSON.stringify({ open: ["cursor ."], remove: ["make down"], plugins: { tmux: "https://x/t.git" } }), "doc"),
     { open: ["cursor ."], remove: ["make down"], plugins: { tmux: "https://x/t.git" } }
   );
   assert.deepEqual(parseOpenDocument(JSON.stringify(["cursor ."]), "doc"), { open: ["cursor ."] });
-  const tab = { title: "Claude", path: ".", color: "yellow", command: "claude --continue" };
-  const warp = { warp: WARP_PLUGIN_SOURCE };
-  assert.deepEqual(parseOpenDocument(JSON.stringify([tab]), "doc"), { open: [CLAUDE_TAB], plugins: warp });
-  assert.deepEqual(parseOpenDocument(JSON.stringify({ other: 1, warpTabs: [tab] }), "doc"), { open: [CLAUDE_TAB], plugins: warp });
-  assert.deepEqual(parseOpenDocument(JSON.stringify([{ ...tab, teardownCommand: "make down" }]), "doc"), {
-    open: [CLAUDE_TAB],
-    remove: ["make down"],
-    plugins: warp
-  });
   assert.throws(() => parseOpenDocument("{", "doc"), /not valid JSON/);
   assert.throws(() => parseOpenDocument("{}", "doc"), /"open", "create" or "remove"/);
-  assert.throws(() => parseOpenDocument('{"warpTabs": null}', "doc"), /must be an array/);
-});
-
-test("a config from before multiple bases asks for lanes init", () => {
-  assert.throws(() => normalizeConfig({ baseFolder: "web", baseRef: "origin/main", lanesDir: "lanes" }), /lanes init/);
+  // Other keys are ignored, so a stray field from some other tool is not a document.
+  assert.throws(() => parseOpenDocument('{"warpTabs": [{"title": "x"}]}', "doc"), /"open", "create" or "remove"/);
+  assert.throws(() => parseOpenDocument('[{"title": "x"}]', "doc"), /must be a command line/);
 });
 
 test("a config without bases is rejected", () => {

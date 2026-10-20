@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CONFIG_FILE, baseNames, findBase, readConfig } from "./config.js";
 import { getRepoRoot } from "./git.js";
-import { getLanePath, listLaneFolders, toLaneName } from "./lanes.js";
+import { getLanePath, lanesInWorkspace, toLaneName } from "./lanes.js";
 import type { BaseConfig, LanesConfig } from "./types.js";
 import { findUp, isDirectory } from "./util.js";
 
@@ -131,9 +131,7 @@ export function laneIdentity(config: LanesConfig, base: BaseConfig, laneName: st
 // The key of every lane that exists; files under any other key were left behind by a
 // deleted lane.
 export function knownLaneKeys(configDir: string, config: LanesConfig): string[] {
-  return config.bases.flatMap((base) =>
-    listLaneFolders(configDir, base.lanesDir, config.lanePrefix).map((laneName) => laneIdentity(config, base, laneName).key)
-  );
+  return lanesInWorkspace(configDir, config).map((lane) => laneIdentity(config, findBase(config, lane.baseName), lane.laneName).key);
 }
 
 // macOS defaults to zsh; bash keeps login shells in .bash_profile.

@@ -2,8 +2,8 @@
 // managed checkout: the updater resets that tree, and a file inside it would also show up
 // in the lanes "is the checkout clean" guard.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { lanesHome } from "../core/paths.js";
 
 interface UpdateState {
   // The sha origin/main pointed at when the last check finished. An update is pending when
@@ -22,7 +22,7 @@ interface InstallMarker {
 const LOCK_STALE_MS = 10 * 60 * 1000;
 
 function stateDir(): string {
-  return path.join(os.homedir(), ".lanes");
+  return lanesHome();
 }
 
 function statePath(): string {
