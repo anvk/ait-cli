@@ -10,7 +10,7 @@ export const ENV = {
   lane: "LANE_NAME",
   // The lane folder, also the working directory of every command.
   lanePath: "LANE_PATH",
-  // Unique across the workspace (`<base>-<lane>` with several bases); file things under it.
+  // Unique across the workspace and stable: always `<base>-<lane>`. File things under it.
   laneKey: "LANE_KEY",
   // What people see: `ABC-1437`, or `ABC-1437 (api)` with several bases.
   laneLabel: "LANE_LABEL",

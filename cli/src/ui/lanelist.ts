@@ -3,8 +3,8 @@
 import fs from "node:fs";
 import pc from "picocolors";
 import { formatRelativeTime, paintBase } from "../core/format.js";
-import { lastCommit } from "../core/git.js";
-import { getLaneLastUpdatedMs, getLanePath, listLaneFolders, resolveLanesRoot } from "../core/lanes.js";
+import { lastCommit, uncommittedPaths } from "../core/git.js";
+import { getLaneActivityMs, getLanePath, listLaneFolders, resolveLanesRoot } from "../core/lanes.js";
 import { charLength, paintLine, type Paint, type Segment } from "./tui.js";
 import type { LanesConfig } from "../core/types.js";
 import { DAY_MS, mapLimit } from "../core/util.js";
@@ -16,6 +16,9 @@ export interface LaneDisplayItem {
   lastUpdatedMs: number;
   lastCommitSubject: string | null;
   lastCommitAtMs: number | null;
+  // Files with uncommitted changes, new files included: what removing the lane would lose.
+  // null when git could not say.
+  uncommitted: number | null;
 }
 
 export function isOlderThan(item: LaneDisplayItem, days: number, now = Date.now()): boolean {
@@ -33,16 +36,7 @@ export function splitLanesByAge(
   };
 }
 
-// A folder the walk cannot get through (a dangling symlink, say) falls back to its own mtime.
-async function getLaneActivityMs(lanePath: string): Promise<number> {
-  try {
-    return await getLaneLastUpdatedMs(lanePath);
-  } catch {
-    return fs.statSync(lanePath).mtimeMs;
-  }
-}
-
-// Each lane costs a walk of its whole folder and a `git log`, so a few run at once.
+// Each lane costs a `git status` and a `git log`, so a few run at once.
 const GATHER_CONCURRENCY = 8;
 
 // Most recently active first.
@@ -55,16 +49,13 @@ export async function gatherLaneDisplayItems(configDir: string, config: LanesCon
     }))
   );
   const items = await mapLimit(lanes, GATHER_CONCURRENCY, async (lane) => {
-    // Age is how recently the files changed, not when the branch tip was committed. A
-    // lane branched from an old base ref would otherwise be born "old", and `purge`
-    // (which removes worktrees with --force) would target active lanes whose work is
-    // not yet committed.
-    const [lastUpdatedMs, commit] = await Promise.all([getLaneActivityMs(lane.lanePath), lastCommit(lane.lanePath)]);
+    const [changed, commit] = await Promise.all([uncommittedPaths(lane.lanePath), lastCommit(lane.lanePath)]);
     return {
       ...lane,
-      lastUpdatedMs,
+      lastUpdatedMs: await getLaneActivityMs(lane.lanePath, changed),
       lastCommitSubject: commit ? commit.subject : null,
-      lastCommitAtMs: commit ? commit.committedAtMs : null
+      lastCommitAtMs: commit ? commit.committedAtMs : null,
+      uncommitted: changed ? changed.length : null
     };
   });
   return items.sort((a, b) => b.lastUpdatedMs - a.lastUpdatedMs);

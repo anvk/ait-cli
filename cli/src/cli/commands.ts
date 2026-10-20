@@ -34,7 +34,7 @@ import {
   type LaneDisplayItem
 } from "../ui/lanelist.js";
 import type { BaseConfig } from "../core/types.js";
-import { errorMessage } from "../core/util.js";
+import { ask, errorMessage } from "../core/util.js";
 import {
   exportLanesRepoCommand,
   knownLaneKeys,
@@ -244,7 +244,7 @@ export async function runLanesCommand(
   }
 }
 
-export async function runPurgeCommand(options: { days?: string }, repoOption?: string): Promise<void> {
+export async function runPurgeCommand(options: { days?: string; force?: boolean }, repoOption?: string): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   await ensurePlugins(config);
   const days = options.days ? Number.parseInt(options.days, 10) : config.oldLaneDays;
@@ -262,17 +262,34 @@ export async function runPurgeCommand(options: { days?: string }, repoOption?: s
   }
 
   const now = Date.now();
-  const purgeCandidates = laneItems.filter((item) => isOlderThan(item, days, now));
-  if (purgeCandidates.length === 0) {
+  const oldLanes = laneItems.filter((item) => isOlderThan(item, days, now));
+  if (oldLanes.length === 0) {
     console.log(pc.yellow(`No lanes older than ${days} day(s) were found.`));
     return;
   }
 
+  // Removing a worktree discards what was never committed. A lane holding such work is
+  // kept unless --force says to lose it; so is one git could not read.
   const showBase = config.bases.length > 1;
+  const kept = options.force ? [] : oldLanes.filter((item) => item.uncommitted !== 0);
+  const purgeCandidates = oldLanes.filter((item) => !kept.includes(item));
+  if (kept.length > 0) {
+    console.log(pc.yellow(`Kept, because they hold uncommitted work (pass --force to purge them anyway):`));
+    for (const item of kept) {
+      const what = item.uncommitted === null ? "git could not read it" : `${item.uncommitted} changed file(s)`;
+      console.log(`- ${item.laneName}${showBase ? ` [${item.baseName}]` : ""} (${what})`);
+    }
+  }
+  if (purgeCandidates.length === 0) {
+    console.log(pc.yellow("Nothing else to purge."));
+    return;
+  }
+
   console.log(pc.yellow(`Lanes to purge (older than ${days} day(s)):`));
   for (const candidate of purgeCandidates) {
     const baseTag = showBase ? ` [${candidate.baseName}]` : "";
-    console.log(`- ${candidate.laneName}${baseTag} (last update: ${new Date(candidate.lastUpdatedMs).toISOString()})`);
+    const loses = candidate.uncommitted ? pc.red(`, ${candidate.uncommitted} uncommitted file(s) will be lost`) : "";
+    console.log(`- ${candidate.laneName}${baseTag} (last update: ${new Date(candidate.lastUpdatedMs).toISOString()}${loses})`);
   }
 
   const confirmationToken = `PURGE ${purgeCandidates.length}`;
@@ -339,11 +356,13 @@ export function runPruneCommand(repoOption?: string): void {
 // Re-fetches every base's command lists from its recorded source and rewrites the config
 // only when something changed, so a team-hosted document can be rolled out without
 // re-running init. Lists the document does not mention are left as they are.
-export async function runCommandsUpdateCommand(options: BaseOption, repoOption?: string): Promise<void> {
+// Lines that run on every open come from the template's owner, so a change to them is
+// shown line by line and applied only once you say so (or pass --yes).
+export async function runCommandsUpdateCommand(options: BaseOption & { yes?: boolean }, repoOption?: string): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   const targets = options.base ? [findBase(config, options.base)] : config.bases;
 
-  let changed = false;
+  const pending: Array<() => void> = [];
   let failures = 0;
   for (const base of targets) {
     if (!base.template) {
@@ -359,25 +378,55 @@ export async function runCommandsUpdateCommand(options: BaseOption, repoOption?:
       continue;
     }
     const before = resolveBaseCommands(config, base);
-    const after = { ...before, ...lists };
-    if (JSON.stringify(before) === JSON.stringify(after)) {
+    const listChanges = COMMAND_LISTS.flatMap((list) => {
+      const next = lists[list];
+      if (!next || JSON.stringify(next) === JSON.stringify(before[list])) {
+        return [];
+      }
+      return [
+        `  ${list}:`,
+        ...before[list].filter((line) => !next.includes(line)).map((line) => pc.red(`    - ${line}`)),
+        ...next.filter((line) => !before[list].includes(line)).map((line) => pc.green(`    + ${line}`)),
+        ...(next.every((line) => before[list].includes(line)) && before[list].every((line) => next.includes(line)) ? [pc.dim("    (same lines, new order)")] : [])
+      ];
+    });
+    const pluginChanges = Object.entries(lists.plugins ?? {})
+      .filter(([name, source]) => config.plugins?.[name] !== source)
+      .map(([name, source]) => pc.yellow(`    plugin ${name}: ${config.plugins?.[name] ?? "(new)"} → ${source}`));
+    if (listChanges.length === 0 && pluginChanges.length === 0) {
       console.log(`${pc.green("unchanged")} ${base.name}: ${before.open.length} open command(s)`);
       continue;
     }
-    for (const list of COMMAND_LISTS) {
-      if (lists[list]) {
-        base[list] = lists[list];
+    console.log(`${pc.yellow("changed")} ${base.name} (from ${base.template}):`);
+    for (const line of [...listChanges, ...(pluginChanges.length ? ["  plugins:", ...pluginChanges] : [])]) {
+      console.log(line);
+    }
+    pending.push(() => {
+      for (const list of COMMAND_LISTS) {
+        if (lists[list]) {
+          base[list] = lists[list];
+        }
       }
-    }
-    if (lists.plugins) {
-      config.plugins = { ...config.plugins, ...lists.plugins };
-    }
-    changed = true;
-    const counts = COMMAND_LISTS.map((list) => `${list} ${before[list].length} → ${after[list].length}`).join(", ");
-    console.log(`${pc.yellow("updated")} ${base.name}: ${counts}`);
+      if (lists.plugins) {
+        config.plugins = { ...config.plugins, ...lists.plugins };
+      }
+    });
   }
 
-  if (changed) {
+  if (pending.length > 0) {
+    if (!options.yes) {
+      if (!process.stdin.isTTY) {
+        throw new Error("The templates changed. Review the lines above, then run again with --yes to apply them.");
+      }
+      const answer = (await ask("Apply these changes? The new lines run every time a lane opens. [y/N] ")).trim();
+      if (!/^y(es)?$/i.test(answer)) {
+        console.log("Nothing changed.");
+        return;
+      }
+    }
+    for (const apply of pending) {
+      apply();
+    }
     console.log(pc.green(`Wrote ${writeConfig(configDir, config)}`));
     await ensurePlugins(config);
   }

@@ -119,11 +119,13 @@ export interface LaneIdentity {
   label: string;
 }
 
+// The key names a lane in files other tools keep (Warp's tab configs), so it never
+// changes: always base and lane, even while the workspace has one base. Adding a second
+// base would otherwise rename every lane's files. The label is for reading, so it skips
+// the base while there is only one.
 export function laneIdentity(config: LanesConfig, base: BaseConfig, laneName: string): LaneIdentity {
-  if (config.bases.length === 1) {
-    return { key: laneName, label: laneName };
-  }
-  return { key: `${base.name}-${laneName}`, label: `${laneName} (${base.name})` };
+  const key = `${base.name}-${laneName}`;
+  return { key, label: config.bases.length === 1 ? laneName : `${laneName} (${base.name})` };
 }
 
 // The key of every lane that exists; files under any other key were left behind by a

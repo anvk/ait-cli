@@ -80,7 +80,8 @@ is not a terminal.
 
 **Uninstall:** `npm rm -g lanes-cli && rm -rf ~/.lanes-cli ~/.lanes`. Lane folders are plain git worktrees and keep working.
 If you like, remove them first with `lanes remove`/`lanes purge`. If you used Warp tabs, you can also delete
-`~/.warp/tab_configs/lanes-*.toml` and `~/.warp/launch_configurations/lanes-*.yaml`.
+`~/.warp/tab_configs/lanes~*.toml` and `~/.warp/launch_configurations/lanes~*.yaml` (and `lanes-*` files from earlier
+versions).
 
 ## Set up a workspace
 
@@ -152,9 +153,9 @@ Outside a terminal (`lanes | cat`), `lanes` prints the same report as `lanes lis
 | `lanes checkout <branch>` | Make a lane of an existing branch (see below); opens the lane that already has it. |
 | `lanes list` | Print lanes, recent and old. |
 | `lanes remove <id>` | Remove one lane after you type `delete`. |
-| `lanes purge [--days N]` | Remove every lane untouched for N days (default `oldLaneDays`) after you type `PURGE <count>`. |
+| `lanes purge [--days N] [--force]` | Remove every lane untouched for N days (default `oldLaneDays`) after you type `PURGE <count>`. Lanes with uncommitted work are kept unless `--force`. |
 | `lanes prune` | Clean up after lane folders deleted by hand (see below). |
-| `lanes commands update [--base X]` | Re-fetch each base's command lists from its `template`. |
+| `lanes commands update [--base X] [--yes]` | Re-fetch each base's command lists from its `template`, show what changed, and apply it once you confirm. |
 | `lanes plugin install\|list\|update\|uninstall` | Manage [plugins](#plugins), the `lanes <plugin> …` commands lists can use. |
 | `lanes doctor` / `lanes status` | Check the install, config, bases, plugins, the commands and their programs, and leftovers. |
 | `lanes update [--check]` | Update `lanes` now. |
@@ -198,8 +199,13 @@ keeps a branch in one worktree.
 
 `remove` and `purge` run the base's `remove` commands first (a failure only warns), then force-remove the worktree,
 discarding uncommitted changes, then delete its branch with `git branch -d`, which keeps a branch with unmerged or
-unpushed commits, and finally delete whatever `lanes` itself wrote for the lane (Warp tab configs). Lane age is
-the newest file change in the folder (ignoring `.git` and `node_modules`), not the last commit.
+unpushed commits, and finally delete whatever `lanes` itself wrote for the lane (Warp tab configs).
+
+Uncommitted work is the one thing removal loses, so `lanes` says so first: `remove` lists the changed files before
+asking, and `purge` keeps every lane that has some (it lists them) unless you pass `--force`.
+
+Lane age comes from git: the latest of when the lane was created, its newest commit, and the newest change among the
+files `git status` reports. Dependencies and build output are ignored files, so they never make a lane look busy.
 
 `lanes prune` handles folders deleted by hand: it removes the files left for them (Warp tab configs) and the stale
 worktree records in each base. Warp keeps every workspace's configs in one folder and `prune` only knows this
@@ -226,7 +232,7 @@ the rest still run. They are told about the lane through the environment and thr
 | `LANE_BRANCH` | `{branch}` | the branch checked out there |
 | `LANE_BASE` | `{base}` | the base's name |
 | `LANE_ROOT` | `{root}` | the workspace folder |
-| `LANE_KEY`, `LANE_LABEL` | | the lane's unique key and display label (`api-ABC-1437`, `ABC-1437 (api)`) |
+| `LANE_KEY`, `LANE_LABEL` | | the lane's unique, stable key (always `<base>-<lane>`, e.g. `api-ABC-1437`) and display label (`ABC-1437 (api)`, or just `ABC-1437` with one base) |
 | `LANE_CREATED` | | `1` while the lane is being opened right after its creation |
 
 Placeholders are substituted shell-quoted, so `{path}` is safe in any folder name. A line that starts with `lanes` runs
@@ -276,8 +282,11 @@ and load it in every workspace. [`templates/default.json`](templates/default.jso
 `Terminal` tab, both Warp tabs in the lane folder. Another workspace's
 `.lanes.json` works as a source too, since it has the same keys. A source is a local path (relative
 to the workspace, `~` allowed) or an `http(s)` URL. A GitHub file link (`github.com/<org>/<repo>/blob/<branch>/<file>`) works as is for a public
-repository; for a private one, `lanes` reads it through `gh` when that is logged in. `lanes commands update` prints `updated`, `unchanged`, `skipped` or `failed` per base and
-only rewrites `.lanes.json` when something changed. Lists the document does not mention are left as they are.
+repository; for a private one, `lanes` reads it through `gh` when that is logged in. `lanes commands update` prints `changed`, `unchanged`, `skipped` or `failed` per base. For a change
+it shows each line added (`+`) or removed (`-`) and any new plugin source, and writes `.lanes.json` only after you
+confirm, since those lines run every time a lane opens. `--yes` applies without asking, for scripts. Lists the
+document does not mention are left as they are. Installing a plugin a template names always asks first and defaults
+to no.
 
 ## Configuration
 

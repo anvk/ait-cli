@@ -2,7 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { copyPaths, type CopyPair, type CopyStrategy } from "./copy.js";
-import { gitList } from "./git.js";
+import { gitList, lastCommit } from "./git.js";
 import { isDirectory } from "./util.js";
 
 export function toLaneName(lanePrefix: string, laneIdOrName: string): string {
@@ -178,24 +178,24 @@ export function listLaneFolders(repoRoot: string, lanesDir: string, lanePrefix: 
     .sort();
 }
 
-// Directories whose mtimes reflect tooling, not the user's work. `node_modules`
-// alone is ~90% of the files in a lane folder, so skipping it is both a large
-// speedup and more accurate: an `npm install` is not lane activity.
-const MTIME_SCAN_IGNORED = new Set([".git", "node_modules"]);
+// When a lane was last worked on, asked of git rather than of every file on disk: the
+// latest of when the worktree was created (its `.git` file is written then, so a lane
+// branched from an old commit is not born old), its newest commit, and the newest change
+// among the files git reports as modified, new or deleted. Dependencies and build output
+// are ignored files, so they are never walked and cannot make a lane look busy, and
+// nothing follows a symlink, so a loop cannot break the answer.
+export async function getLaneActivityMs(lanePath: string, changed: string[] | null): Promise<number> {
+  const mtime = async (target: string): Promise<number> => (await fsp.lstat(target).catch(() => null))?.mtimeMs ?? 0;
+  const times = await Promise.all([
+    mtime(path.join(lanePath, ".git")),
+    lastCommitMs(lanePath),
+    // A deleted file has no time of its own; its folder changed when it went.
+    ...(changed ?? []).map(async (relative) => (await mtime(path.join(lanePath, relative))) || mtime(path.dirname(path.join(lanePath, relative))))
+  ]);
+  return Math.max(...times) || (await mtime(lanePath));
+}
 
-// The newest mtime anywhere in a lane folder. Every file has to be stat'ed, so the
-// directory walk fans out instead of visiting one file at a time.
-export async function getLaneLastUpdatedMs(lanePath: string): Promise<number> {
-  const stat = await fsp.stat(lanePath);
-  if (!stat.isDirectory()) {
-    return stat.mtimeMs;
-  }
-  const entries = await fsp.readdir(lanePath, { withFileTypes: true });
-  const childTimes = await Promise.all(
-    entries
-      .filter((entry) => !MTIME_SCAN_IGNORED.has(entry.name))
-      .map((entry) => getLaneLastUpdatedMs(path.join(lanePath, entry.name)))
-  );
-  const latest = childTimes.reduce((max, time) => Math.max(max, time), 0);
-  return latest || stat.mtimeMs;
+async function lastCommitMs(lanePath: string): Promise<number> {
+  const commit = await lastCommit(lanePath);
+  return commit ? commit.committedAtMs : 0;
 }

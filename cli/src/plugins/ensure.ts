@@ -20,9 +20,10 @@ export async function ensurePlugins(config: LanesConfig): Promise<void> {
     if (!input.isTTY) {
       throw new Error(`Plugin '${name}' is not installed. Run: ${command}`);
     }
+    // Installing runs npm install and a build from that source, so it takes a "yes".
     console.log(pc.yellow(`This workspace uses plugin '${name}', which is not installed.`));
-    const answer = (await ask(`Install it from ${source}? [Y/n] `)).trim();
-    if (answer && !/^y(es)?$/i.test(answer)) {
+    const answer = (await ask(`Install it from ${source}? It runs that repository's install and build. [y/N] `)).trim();
+    if (!/^y(es)?$/i.test(answer)) {
       throw new Error(`Plugin '${name}' is not installed. Run: ${command}`);
     }
     const record = await installPlugin(source);
