@@ -189,14 +189,16 @@ export function applyUpdate(info: InstallPaths): UpdateOutcome {
     }
 
     if (npmInstallNeeded(info, from)) {
-      const installed = runAllowFailure("npm", ["install", "--silent"], {
+      // `npm ci` installs exactly the lockfile and never rewrites it; a rewritten lockfile
+      // would leave the checkout dirty, which stops every later update.
+      const installed = runAllowFailure("npm", ["ci", "--silent"], {
         cwd: info.packageRoot,
         timeout: BUILD_TIMEOUT_MS
       });
       if (installed.status !== 0) {
         rollback(info, from);
         writeState({ failedSha: target });
-        return { status: "failed", reason: "npm install failed; rolled back" };
+        return { status: "failed", reason: "npm ci failed; rolled back" };
       }
     }
 

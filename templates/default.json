@@ -3,7 +3,7 @@
     "warp": "https://github.com/anvk/lanes.git#plugins/warp"
   },
   "open": [
-    "lanes warp tab Claude --color yellow --command 'claude --continue'",
+    "lanes warp tab Claude --color yellow --command 'claude --continue || claude'",
     "lanes warp tab Terminal"
   ]
 }

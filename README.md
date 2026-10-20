@@ -37,8 +37,8 @@ To use your team's own setup instead, pass its URL. To type the commands in your
 The [default template](templates/default.json) is made for [Warp](https://www.warp.dev) and [Claude Code](https://www.anthropic.com/claude-code).
 Each lane opens as two Warp tabs in the lane folder:
 
-- **Claude** runs `claude --continue`, which picks up that lane's last Claude Code session. A lane with no session
-  yet starts a fresh one.
+- **Claude** runs `claude --continue || claude`: it picks up that lane's last Claude Code session, and starts a
+  fresh one in a lane that has none yet.
 - **Terminal** is a plain shell, for git, tests and anything else.
 
 You only need both installed: when you load the template, `lanes init` offers to install the Warp plugin for you.
@@ -174,20 +174,21 @@ Flags shared by the commands that open lanes:
 
 ### Creating a lane
 
-`lanes open`/`lanes create` fetch origin (when the base has one), check the base is clean, rebase the base onto its `ref`, add a worktree on a new
+`lanes open`/`lanes create` fetch the base's `ref` from origin (just that branch, when the base has an origin), check
+the base is clean, fast-forward the base to `ref` so the dependencies copied from it match, add a worktree on a new
 branch `<branchPrefix><laneName>` (e.g. `alex/ABC-1437`), and copy over what git ignores. If the base has `create`
 commands, or a Warp tab with `--setup`, `lanes` asks once whether to run them, then runs the `open` list.
 
 **Clean base check.** A lane branches from `ref`, so work that lives only in the base would not be on it. Creation
 stops when the base has uncommitted changes to tracked files or commits not on `ref`, and lists them. Untracked
-files do not block (they are not copied and stay in the base), and being behind `ref` is fine (the rebase fixes
+files do not block (they are not copied and stay in the base), and being behind `ref` is fine (the fast-forward fixes
 that). `--force` skips the check and also copies the base's modified tracked files over the worktree's.
 
 ### Checking out a branch
 
 `lanes checkout someone/ABC-558-fix-login` (an `origin/` prefix is dropped) fetches that one branch and checks it out as a
 local branch tracking origin, so `git push` goes back to it. An existing local branch is used as is, with a warning
-when it is behind. The base is not rebased.
+when it is behind. The base is not moved.
 
 Lane names (examples use the prefix `ABC-`): a branch with your `branchPrefix` maps back to its lane (`alex/ABC-1437` → `ABC-1437`); any other is named
 after its last `/` part with the lane prefix added or respelled (`someone/ABC-558-x` → `ABC-558-x`, `feat/login` →
@@ -235,13 +236,14 @@ the rest still run. They are told about the lane through the environment and thr
 | `LANE_KEY`, `LANE_LABEL` | | the lane's unique, stable key (always `<base>-<lane>`, e.g. `api-ABC-1437`) and display label (`ABC-1437 (api)`, or just `ABC-1437` with one base) |
 | `LANE_CREATED` | | `1` while the lane is being opened right after its creation |
 
-Placeholders are substituted shell-quoted, so `{path}` is safe in any folder name. A line that starts with `lanes` runs
+Placeholders are quoted to fit where they stand, so `cd {path}`, `echo "{path}"` and `'{path}'` all work for any
+folder name. A line that starts with `lanes` runs
 this same `lanes`, which is how [plugins](#plugins) such as Warp tabs work:
 
 ```json
 "open": [
   "lanes warp tab Server --path server --color red --setup 'npm run dev'",
-  "lanes warp tab Claude --color yellow --command 'claude --continue'",
+  "lanes warp tab Claude --color yellow --command 'claude --continue || claude'",
   "cursor ."
 ],
 "remove": ["cd server && npm run stop"]
@@ -278,7 +280,7 @@ The Warp plugin's `lanes warp tab` flags are in [its README](plugins/warp/README
 ### Command documents
 
 A command document is a JSON object with any of `open`, `create` and `remove`, so you can keep one per project
-and load it in every workspace. [`templates/default.json`](templates/default.json) is one: a `Claude` tab running `claude --continue` and a plain
+and load it in every workspace. [`templates/default.json`](templates/default.json) is one: a `Claude` tab running `claude --continue || claude` and a plain
 `Terminal` tab, both Warp tabs in the lane folder. Another workspace's
 `.lanes.json` works as a source too, since it has the same keys. A source is a local path (relative
 to the workspace, `~` allowed) or an `http(s)` URL. A GitHub file link (`github.com/<org>/<repo>/blob/<branch>/<file>`) works as is for a public
@@ -302,7 +304,7 @@ to no.
       "name": "api", "folder": "api-base", "ref": "origin/main", "lanesDir": "lanes/api",
       "template": "default",
       "open": [
-        "lanes warp tab Claude --color yellow --command 'claude --continue'",
+        "lanes warp tab Claude --color yellow --command 'claude --continue || claude'",
         "lanes warp tab Terminal"
       ],
       "create": ["npm install"]

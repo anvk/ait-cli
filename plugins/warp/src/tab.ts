@@ -2,7 +2,6 @@
 // tabs of a list are staged and opened together at the end (so they share a window or a
 // group); run from a shell, it opens one tab right away.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import pc from "picocolors";
@@ -189,7 +188,7 @@ export function resolveTabFolder(lanePath: string, relative: string, title: stri
 
 function stageTab(spec: WarpTabSpec, ctx: TabContext, index: number): StagedTab {
   const cwd = resolveTabFolder(ctx.lanePath, spec.path, spec.title);
-  const command = spec.command ? withoutContinueIfNoClaudeSession(spec.command, cwd, spec.title) : undefined;
+  const command = spec.command;
   const setup = process.env[ENV.runSetup] ? spec.setup : undefined;
   // Tab configs are rewritten on every open, so the setup command runs this once only.
   const tabCommand = [command, setup].filter(Boolean).join("; ");
@@ -294,25 +293,3 @@ function sleepSync(milliseconds: number): void {
   Atomics.wait(buffer, 0, 0, milliseconds);
 }
 
-// `claude --continue` exits with "No conversation found to continue" in a folder Claude
-// Code has never run in, which is every brand-new lane. Claude Code keeps one session
-// folder per working directory, so the flag is dropped when that folder has no sessions.
-const CONTINUE_FLAGS = new Set(["--continue", "-c"]);
-
-function withoutContinueIfNoClaudeSession(command: string, cwd: string, tabTitle: string): string {
-  const words = command.split(/\s+/);
-  if (words[0] !== "claude" || !words.some((word) => CONTINUE_FLAGS.has(word)) || hasClaudeSession(cwd)) {
-    return command;
-  }
-  console.log(pc.dim(`Tab '${tabTitle}': no Claude session in this folder yet, starting a fresh one.`));
-  return words.filter((word) => !CONTINUE_FLAGS.has(word)).join(" ");
-}
-
-function hasClaudeSession(cwd: string): boolean {
-  const projectDir = path.join(os.homedir(), ".claude", "projects", cwd.replace(/[^A-Za-z0-9]/g, "-"));
-  try {
-    return fs.readdirSync(projectDir).some((entry) => entry.endsWith(".jsonl"));
-  } catch {
-    return false;
-  }
-}

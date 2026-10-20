@@ -11,7 +11,7 @@ lanes plugin install https://github.com/anvk/lanes.git#plugins/warp
 "open": [
   "lanes warp tab Server --path server --color red --setup 'npm run dev'",
   "lanes warp tab Web --path web --color blue",
-  "lanes warp tab Claude --color yellow --command 'claude --continue'"
+  "lanes warp tab Claude --color yellow --command 'claude --continue || claude'"
 ]
 ```
 
@@ -36,9 +36,10 @@ the end, so they land in one window in the configured order. Run from your own s
 `lanes warp tab Logs --command 'tail -f app.log'` opens a single tab for the current folder
 right away.
 
-Claude Code keeps sessions per folder, so `--command 'claude --continue'` resumes that lane's
-last session. In a lane with no session yet, the flag is dropped so Claude starts fresh
-instead of exiting.
+Commands run as you write them; the plugin knows nothing about any particular agent. To
+resume an agent's last session where there may not be one yet, say so in the command:
+`--command 'claude --continue || claude'` resumes the lane's last Claude Code session, and
+starts a fresh one when `--continue` finds none.
 
 ## Files and cleanup
 
