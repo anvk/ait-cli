@@ -102,7 +102,7 @@ environment. `lanes-plugin-api` exports the names as `ENV`:
 | --- | --- | --- |
 | `lane` | `LANE_NAME` | lane name, e.g. `ABC-1437` |
 | `lanePath` | `LANE_PATH` | the lane folder (also the working directory) |
-| `laneKey` | `LANE_KEY` | unique across the workspace (`api-ABC-1437` with several bases). File things under it; `forget(key)` gets the same value. |
+| `laneKey` | `LANE_KEY` | unique across the workspace and stable: always `<base>-<lane>`, such as `api-ABC-1437`. File things under it; `forget(key)` gets the same value. |
 | `laneLabel` | `LANE_LABEL` | what people see: `ABC-1437 (api)` |
 | `branch`, `base`, `root` | `LANE_BRANCH`, `LANE_BASE`, `LANE_ROOT` | the branch, the base name, the workspace folder |
 | `created` | `LANE_CREATED` | `1` while the lane is opened right after creation |
@@ -125,7 +125,7 @@ reads the staged file and does the real work.
 ### Cleaning up
 
 Name every file you write after `LANE_KEY` so `forget(key)` and `findLeftovers` can find
-them with no other state (Warp uses `lanes-<key>-*.toml`). `lanes` calls `forget` for every
+them with no other state (Warp uses `lanes~<key>~*.toml`; keep a separator keys cannot contain, so no lane's files match another's). `lanes` calls `forget` for every
 installed plugin when a lane goes, whatever the config says now, since the lane may have
 been opened under an earlier config.
 

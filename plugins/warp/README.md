@@ -42,9 +42,11 @@ instead of exiting.
 
 ## Files and cleanup
 
-Tab configs are written to `~/.warp/tab_configs/lanes-<lane>-*.toml` (`lanes-<base>-<lane>-*`
-with several bases) and deleted when the lane is removed or pruned. Groups go through a
-launch configuration (`~/.warp/launch_configurations/lanes-<lane>.yaml`), the only Warp format
+Tab configs are written to `~/.warp/tab_configs/lanes~<base>-<lane>~<n>-<title>.toml` and deleted
+when the lane is removed or pruned. The `~` separates the lane's key from the rest, so one lane's
+files are never mistaken for another's (`lanes prune` also clears `lanes-*` files from earlier
+versions). Groups go through a launch configuration
+(`~/.warp/launch_configurations/lanes~<base>-<lane>.yaml`), the only Warp format
 that can declare them; this needs a Warp release from mid-September 2026 or later, and older
 ones open the tabs ungrouped in a new window. Opening the same lane again adds another set
 of tabs; Warp cannot reuse open tabs.

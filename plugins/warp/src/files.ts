@@ -28,12 +28,17 @@ export function sanitize(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, "-");
 }
 
+// File names are `lanes~<key>~<index>-<title>.toml` and `lanes~<key>.yaml`. `~` is the
+// separator because sanitize() never lets it into a key or title, so a name splits back
+// into its key one way only, and one lane's prefix can never be the start of another's
+// (`lanes~1~` is not a prefix of `lanes~1-fix~`). It also survives encodeURIComponent
+// unchanged, so the warp:// links name the file exactly.
 export function getLaunchConfigName(key: string): string {
-  return `lanes-${sanitize(key)}`;
+  return `lanes~${sanitize(key)}`;
 }
 
 export function getLaneConfigPrefix(key: string): string {
-  return `lanes-${sanitize(key)}-`;
+  return `lanes~${sanitize(key)}~`;
 }
 
 export function tabConfigName(key: string, index: number, title: string): string {
@@ -55,12 +60,15 @@ export function removeTabConfigs(key: string): void {
   fs.rmSync(path.join(getLaunchConfigsDir(), `${getLaunchConfigName(key)}.yaml`), { force: true });
 }
 
-// Tab configs are named `lanes-<key>-<index>-<slug>.toml` and launch configs `lanes-<key>.yaml`.
 // Anything whose <key> no longer matches an existing lane is left over from a lane that
 // was deleted outside `lanes remove`, and Warp keeps listing it in its new-tab and launch
-// configuration menus.
-const TAB_CONFIG_NAME = /^lanes-(.+)-\d+-[^/]*\.toml$/;
-const LAUNCH_CONFIG_NAME = /^lanes-(.+)\.yaml$/;
+// configuration menus. Files in the earlier `lanes-<key>-…` naming could not be split
+// back into a key reliably; they are all leftovers, rewritten in the new naming the next
+// time their lane opens.
+const TAB_CONFIG_NAME = /^lanes~([^~]+)~\d+-[^/~]*\.toml$/;
+const LAUNCH_CONFIG_NAME = /^lanes~([^~]+)\.yaml$/;
+const OLD_NAMING = /^lanes-.+\.(toml|yaml)$/;
+const OLD_NAMING_KEY = "(earlier naming)";
 
 export function findOrphanedTabConfigs(knownKeys: string[]): Leftover[] {
   const known = new Set(knownKeys.map(sanitize));
@@ -73,13 +81,13 @@ export function findOrphanedTabConfigs(knownKeys: string[]): Leftover[] {
       return;
     }
     for (const entry of entries) {
-      const match = pattern.exec(entry);
-      if (!match || known.has(match[1])) {
+      const key = OLD_NAMING.test(entry) ? OLD_NAMING_KEY : pattern.exec(entry)?.[1];
+      if (!key || known.has(key)) {
         continue;
       }
-      const files = orphans.get(match[1]) ?? [];
+      const files = orphans.get(key) ?? [];
       files.push(path.join(dir, entry));
-      orphans.set(match[1], files);
+      orphans.set(key, files);
     }
   };
   collect(getTabConfigsDir(), TAB_CONFIG_NAME);

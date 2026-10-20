@@ -18,7 +18,8 @@ import {
   localBranchExists,
   rebaseCurrentBranchOnto,
   refResolves,
-  removeWorktree
+  removeWorktree,
+  uncommittedPaths
 } from "./git.js";
 import { ensureLanesDir, getLanePath, listLaneFolders, syncBaseFolderIntoLane, toLaneName } from "./lanes.js";
 import type { BaseConfig, LanesConfig } from "./types.js";
@@ -364,6 +365,13 @@ export async function confirmAndRemoveLane(configDir: string, config: LanesConfi
   }
 
   const { label } = laneIdentity(config, location.base, location.laneName);
+  // Say what would be lost before asking: removal discards uncommitted changes.
+  const changed = await uncommittedPaths(location.lanePath);
+  if (changed && changed.length > 0) {
+    const shown = changed.slice(0, MAX_LISTED_DIRTY_ITEMS).map((p) => `    ${p}`);
+    const more = changed.length > shown.length ? [`    ...and ${changed.length - shown.length} more`] : [];
+    console.log(pc.red([`  ${label} has ${changed.length} file(s) with uncommitted changes, which removal discards:`, ...shown, ...more].join("\n")));
+  }
   await promptForExactConfirmation(`Type 'delete' to permanently remove the lane worktree ${label}:`, "delete");
   deleteLane(configDir, config, location, baseRepoRoot);
   console.log(pc.green(`Removed lane: ${location.lanePath}`));

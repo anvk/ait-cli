@@ -262,3 +262,26 @@ export async function lastCommit(
     return null;
   }
 }
+
+// What `git status` reports as changed in a worktree, new files included: the work that
+// removing the worktree would lose. Paths are relative to the worktree; null when git
+// cannot answer (the folder is not a worktree any more, say).
+export async function uncommittedPaths(worktreePath: string): Promise<string[] | null> {
+  let stdout: string;
+  try {
+    stdout = (await execFileAsync("git", ["status", "--porcelain=v1", "-z"], { cwd: worktreePath, maxBuffer: 64 * 1024 * 1024 })).stdout;
+  } catch {
+    return null;
+  }
+  // Each entry is "XY path"; a rename or copy is followed by its old path as one more entry.
+  const entries = stdout.split("\0").filter(Boolean);
+  const paths: string[] = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    const status = entries[i].slice(0, 2);
+    paths.push(entries[i].slice(3).replace(/\/$/, ""));
+    if (status[0] === "R" || status[0] === "C") {
+      i += 1;
+    }
+  }
+  return paths;
+}

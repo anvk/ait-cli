@@ -19,3 +19,12 @@ test("without a prefix a lane is named by its id", () => {
   assert.equal(toLaneName("ABC-", "1437"), "ABC-1437");
   assert.equal(toLaneName("ABC-", "ABC-1437"), "ABC-1437");
 });
+
+test("a lane's key is always base and lane, so adding a base does not rename it", async () => {
+  const { laneIdentity } = await import("./workspace.js");
+  const base = { name: "app", folder: "app", ref: "origin/main", lanesDir: "lanes/app" };
+  const one = { lanePrefix: "", branchPrefix: "", oldLaneDays: 14, bases: [base] };
+  const two = { ...one, bases: [base, { ...base, name: "web", folder: "web", lanesDir: "lanes/web" }] };
+  assert.deepEqual(laneIdentity(one as never, base, "1437"), { key: "app-1437", label: "1437" });
+  assert.deepEqual(laneIdentity(two as never, base, "1437"), { key: "app-1437", label: "1437 (app)" });
+});

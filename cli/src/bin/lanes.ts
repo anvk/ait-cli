@@ -153,7 +153,8 @@ program
   .command("purge")
   .description("Purge lanes not updated in N days (default: config oldLaneDays) with confirmation")
   .option("--days <days>", "Age threshold in days (overrides config)")
-  .action((options: { days?: string }) => runPurgeCommand(options, repo()));
+  .option("--force", "Also purge lanes that hold uncommitted changes, losing them")
+  .action((options: { days?: string; force?: boolean }) => runPurgeCommand(options, repo()));
 
 program
   .command("prune")
@@ -167,7 +168,8 @@ program
   .command("update")
   .description("Re-fetch each base's command lists from its recorded template and save any changes")
   .option("--base <name>", "Only update this base")
-  .action((options: BaseOption) => runCommandsUpdateCommand(options, repo()));
+  .option("--yes", "Apply the changes without asking (they are still printed)")
+  .action((options: BaseOption & { yes?: boolean }) => runCommandsUpdateCommand(options, repo()));
 
 registerPluginCommands(program);
 
