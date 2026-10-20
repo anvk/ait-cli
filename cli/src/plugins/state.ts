@@ -1,8 +1,8 @@
 // What is installed: `~/.lanes/plugins.json` lists the plugins, `~/.lanes/plugins/<name>` links
 // to each one's folder, and git clones live under `~/.lanes/plugins/.repos/`.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { pluginsFile, pluginsRoot } from "../core/paths.js";
 
 export type PluginKind =
   // A folder on this machine, linked as is and never updated by lanes.
@@ -27,17 +27,12 @@ interface PluginsFile {
   plugins: InstalledPlugin[];
 }
 
-export function pluginsRoot(): string {
-  return path.join(os.homedir(), ".lanes", "plugins");
-}
+export { pluginsRoot };
 
 export function reposRoot(): string {
   return path.join(pluginsRoot(), ".repos");
 }
 
-function pluginsFile(): string {
-  return path.join(os.homedir(), ".lanes", "plugins.json");
-}
 
 export function readInstalled(): InstalledPlugin[] {
   try {

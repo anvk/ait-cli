@@ -226,3 +226,65 @@ export function baseSwitcherLine(label: string, baseName: string, width: number)
     width
   );
 }
+
+// Esc pressed in readLine, `steps` times in quick succession.
+export class EscapePressed extends Error {
+  constructor(readonly steps: number) {
+    super("escape");
+  }
+}
+
+// A line editor just big enough for answers: type, backspace, ctrl+u to clear, enter
+// to submit. Esc rejects with EscapePressed, counting the presses. Raw mode is what lets a bare
+// Esc be seen at all; readline's question() would swallow it.
+export function readLine(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let buffer = "";
+
+    function cleanup(): void {
+      input.off("keypress", onKeypress);
+      input.setRawMode(false);
+      input.pause();
+      output.write("\n");
+    }
+
+    function onKeypress(str: string | undefined, key: readline.Key = {}): void {
+      if (key.ctrl && key.name === "c") {
+        cleanup();
+        process.exit(130);
+      }
+      if (key.name === "escape") {
+        cleanup();
+        reject(new EscapePressed(escapeCount(key)));
+        return;
+      }
+      if (key.name === "return" || key.name === "enter") {
+        cleanup();
+        resolve(buffer);
+        return;
+      }
+      if (key.name === "backspace") {
+        if (buffer) {
+          buffer = [...buffer].slice(0, -1).join("");
+          output.write("\b \b");
+        }
+        return;
+      }
+      if (key.ctrl && key.name === "u") {
+        output.write("\b \b".repeat([...buffer].length));
+        buffer = "";
+        return;
+      }
+      if (isPrintable(str, key)) {
+        buffer += str;
+        output.write(str);
+      }
+    }
+
+    output.write(prompt);
+    emitKeypresses();
+    input.setRawMode(true);
+    input.resume();
+    input.on("keypress", onKeypress);
+  });
+}

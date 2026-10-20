@@ -6,12 +6,12 @@
 // Shelling out to git is reserved for the display strings and the guards, which only run
 // once there is actually an update waiting.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runAllowFailure } from "../core/process.js";
 import { findUp } from "../core/util.js";
 import { readInstallMarker } from "./state.js";
+import { defaultInstallDir } from "../core/paths.js";
 
 export interface InstallPaths {
   packageRoot: string;
@@ -70,7 +70,7 @@ export function resolveInstallPaths(): InstallPaths {
   const packageRoot = findDirUp(here, "package.json") ?? path.resolve(here, "../..");
   const gitRoot = findDirUp(packageRoot, ".git");
   const marker = readInstallMarker().installDir;
-  const expected = marker ?? path.join(os.homedir(), ".lanes-cli", "cli");
+  const expected = marker ?? defaultInstallDir();
 
   let managed = false;
   try {

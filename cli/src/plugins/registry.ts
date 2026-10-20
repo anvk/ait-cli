@@ -23,7 +23,7 @@ export function brokenPluginList(): readonly BrokenPlugin[] {
   return brokenPlugins;
 }
 
-export function pluginNamed(name: string | undefined): Plugin | undefined {
+function pluginNamed(name: string | undefined): Plugin | undefined {
   return loaded.find((plugin) => plugin.name === name);
 }
 
@@ -35,7 +35,7 @@ export function registerPlugins(program: Command): void {
 }
 
 // The plugin a `lanes <name> …` line needs, or undefined for any other command.
-export function pluginNameOf(line: string): string | undefined {
+function pluginNameOf(line: string): string | undefined {
   return lanesWords(line)?.[0];
 }
 
@@ -93,7 +93,7 @@ function pluginNamesIn(config: LanesConfig): Set<string> {
 }
 
 // The plugins some base actually uses, so doctor checks only what matters here.
-export function usedPlugins(config: LanesConfig): Plugin[] {
+function usedPlugins(config: LanesConfig): Plugin[] {
   return [...pluginNamesIn(config)].flatMap((name) => pluginNamed(name) ?? []);
 }
 

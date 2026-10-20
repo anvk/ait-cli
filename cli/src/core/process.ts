@@ -63,10 +63,6 @@ export function commandExists(command: string): boolean {
   return result.status === 0;
 }
 
-export function commandSucceeds(command: string, args: string[]): boolean {
-  const result = spawnSync(command, args, { stdio: "ignore" });
-  return result.status === 0;
-}
 
 export interface RunResultWithStatus extends RunResult {
   status: number | null;
