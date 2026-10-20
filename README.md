@@ -375,3 +375,7 @@ Self-update stays off in a linked development checkout. `readlink -f "$(command 
 itself in `lanes doctor` when a base uses it, and forget a lane's files when the lane is removed or pruned. Writing one
 is described in [`plugins/README.md`](plugins/README.md). Anything that is an ordinary program needs none of that and
 is just a line in a list.
+
+## License
+
+[MIT](LICENSE)

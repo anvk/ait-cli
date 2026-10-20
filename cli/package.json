@@ -2,6 +2,7 @@
   "name": "lanes-cli",
   "version": "0.2.0",
   "description": "Run coding agents side by side, each lane in its own git worktree",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "lanes": "./dist/bin/lanes.js"
