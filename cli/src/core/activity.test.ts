@@ -15,8 +15,17 @@ function laneFromOldCommit(): { lane: string } {
   const base = path.join(root, "base");
   fs.mkdirSync(base);
   const old = new Date(Date.now() - 30 * DAY).toISOString();
-  const env = { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t", GIT_AUTHOR_DATE: old, GIT_COMMITTER_DATE: old };
-  const git = (args: string[], cwd = base) => assert.equal(spawnSync("git", args, { cwd, env }).status, 0, args.join(" "));
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "t",
+    GIT_AUTHOR_EMAIL: "t@t",
+    GIT_COMMITTER_NAME: "t",
+    GIT_COMMITTER_EMAIL: "t@t",
+    GIT_AUTHOR_DATE: old,
+    GIT_COMMITTER_DATE: old
+  };
+  const git = (args: string[], cwd = base) =>
+    assert.equal(spawnSync("git", args, { cwd, env }).status, 0, args.join(" "));
   git(["init", "-q", "-b", "main"]);
   fs.writeFileSync(path.join(base, "a.txt"), "a\n");
   fs.writeFileSync(path.join(base, "b.txt"), "b\n");

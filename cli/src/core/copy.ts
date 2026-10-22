@@ -28,7 +28,11 @@ export function cloneSupport(): { available: boolean; helper: string; reason?: s
     return { available: false, helper: CLONE_HELPER, reason: "cloning is macOS only" };
   }
   if (!fs.existsSync(CLONE_HELPER)) {
-    return { available: false, helper: CLONE_HELPER, reason: "the helper was not built (no compiler when lanes was installed)" };
+    return {
+      available: false,
+      helper: CLONE_HELPER,
+      reason: "the helper was not built (no compiler when lanes was installed)"
+    };
   }
   return { available: true, helper: CLONE_HELPER };
 }
@@ -94,11 +98,9 @@ function cpAll(pairs: CopyPair[]): boolean {
     const expanded = pairs.flatMap((pair) => expandOneLevel(pair));
     // NUL separated, so no path needs quoting; `-n 2` hands cp one pair at a time.
     fs.writeFileSync(listFile, `${expanded.flatMap((pair) => [pair.source, pair.destination]).join("\0")}\0`);
-    const result = spawnSync(
-      "/bin/sh",
-      ["-c", `exec xargs -0 -P ${CP_JOBS} -n 2 cp -Rc < "$1"`, "sh", listFile],
-      { stdio: ["ignore", "ignore", "pipe"] }
-    );
+    const result = spawnSync("/bin/sh", ["-c", `exec xargs -0 -P ${CP_JOBS} -n 2 cp -Rc < "$1"`, "sh", listFile], {
+      stdio: ["ignore", "ignore", "pipe"]
+    });
     return result.status === 0;
   } catch {
     return false;

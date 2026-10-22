@@ -5,7 +5,9 @@ import { installPlugin, listPlugins, uninstallPlugin, updatePlugins } from "./in
 import { brokenPluginList } from "./registry.js";
 
 export function registerPluginCommands(program: Command): void {
-  const plugin = program.command("plugin").description("Install, update and list lanes plugins (`lanes <plugin> …` commands)");
+  const plugin = program
+    .command("plugin")
+    .description("Install, update and list lanes plugins (`lanes <plugin> …` commands)");
 
   plugin
     .command("list")

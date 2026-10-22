@@ -4,8 +4,8 @@ Command documents for `lanes`: what runs when a lane opens, when it is created a
 `lanes init <URL or path>`, or answer the "Command lists to load" question with it. It is saved as the base's
 `template` in `.lanes.json`, and `lanes commands update` refreshes the lists from it later.
 
-| File | What it does |
-| --- | --- |
+| File           | What it does                                                                         |
+| -------------- | ------------------------------------------------------------------------------------ |
 | `default.json` | Two Warp tabs in the lane folder: `Claude` (runs `claude --continue`) and `Terminal` |
 
 Load it by its GitHub address:

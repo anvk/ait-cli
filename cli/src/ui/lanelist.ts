@@ -81,7 +81,9 @@ export function laneRowSegments(
   const namePaint: Paint = old ? pc.red : pc.green;
   const relativePaint: Paint = old ? pc.red : pc.yellow;
   const subjectPaint: Paint = item.lastCommitSubject ? (old ? pc.red : pc.white) : pc.dim;
-  const segments: Segment[] = [{ text: item.laneName.padEnd(widths.name + 2), paint: (text) => emphasize(namePaint(text)) }];
+  const segments: Segment[] = [
+    { text: item.laneName.padEnd(widths.name + 2), paint: (text) => emphasize(namePaint(text)) }
+  ];
   if (widths.base > 0) {
     segments.push({ text: `[${item.baseName}]`.padEnd(widths.base + 2), paint: (text) => emphasize(paintBase(text)) });
   }

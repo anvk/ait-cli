@@ -72,7 +72,14 @@ interface SyncPlan {
 }
 
 function planFromGit(sourceRoot: string): SyncPlan | null {
-  const missing = gitPaths(sourceRoot, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"]);
+  const missing = gitPaths(sourceRoot, [
+    "ls-files",
+    "--others",
+    "--ignored",
+    "--exclude-standard",
+    "--directory",
+    "-z"
+  ]);
   if (missing === null) {
     return null;
   }
@@ -208,7 +215,10 @@ export async function getLaneActivityMs(lanePath: string, changed: string[] | nu
     mtime(path.join(lanePath, ".git")),
     lastCommitMs(lanePath),
     // A deleted file has no time of its own; its folder changed when it went.
-    ...(changed ?? []).map(async (relative) => (await mtime(path.join(lanePath, relative))) || mtime(path.dirname(path.join(lanePath, relative))))
+    ...(changed ?? []).map(
+      async (relative) =>
+        (await mtime(path.join(lanePath, relative))) || mtime(path.dirname(path.join(lanePath, relative)))
+    )
   ]);
   return Math.max(...times) || (await mtime(lanePath));
 }

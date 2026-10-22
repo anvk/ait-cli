@@ -5,7 +5,14 @@ import { stdin as input } from "node:process";
 import pc from "picocolors";
 import { resolveBaseCommands } from "../core/config.js";
 import { uncommittedPaths } from "../core/git.js";
-import { checkoutBranchLane, deleteLane, MAX_LISTED_DIRTY_ITEMS, openLane, type ForceOption, type OpenOptions } from "../core/lifecycle.js";
+import {
+  checkoutBranchLane,
+  deleteLane,
+  MAX_LISTED_DIRTY_ITEMS,
+  openLane,
+  type ForceOption,
+  type OpenOptions
+} from "../core/lifecycle.js";
 import type { BaseConfig, LanesConfig } from "../core/types.js";
 import { ask } from "../core/util.js";
 import { laneIdentity, resolveBaseRepoRoot, type LaneLocation } from "../core/workspace.js";
@@ -42,7 +49,11 @@ export async function promptForExactConfirmation(prompt: string, expected: strin
   }
 }
 
-export async function confirmAndRemoveLane(configDir: string, config: LanesConfig, location: LaneLocation): Promise<void> {
+export async function confirmAndRemoveLane(
+  configDir: string,
+  config: LanesConfig,
+  location: LaneLocation
+): Promise<void> {
   const baseRepoRoot = resolveBaseRepoRoot(configDir, location.base);
   if (!fs.existsSync(location.lanePath)) {
     throw new Error(`Lane folder does not exist: ${location.lanePath}`);
@@ -54,7 +65,15 @@ export async function confirmAndRemoveLane(configDir: string, config: LanesConfi
   if (changed && changed.length > 0) {
     const shown = changed.slice(0, MAX_LISTED_DIRTY_ITEMS).map((p) => `    ${p}`);
     const more = changed.length > shown.length ? [`    ...and ${changed.length - shown.length} more`] : [];
-    console.log(pc.red([`  ${label} has ${changed.length} file(s) with uncommitted changes, which removal discards:`, ...shown, ...more].join("\n")));
+    console.log(
+      pc.red(
+        [
+          `  ${label} has ${changed.length} file(s) with uncommitted changes, which removal discards:`,
+          ...shown,
+          ...more
+        ].join("\n")
+      )
+    );
   }
   await promptForExactConfirmation(`Type 'delete' to permanently remove the lane worktree ${label}:`, "delete");
   deleteLane(configDir, config, location, baseRepoRoot);

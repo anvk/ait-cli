@@ -49,7 +49,10 @@ export function selfUpdateDiagnostics(): { level: "ok" | "warn"; message: string
 
   const plugins = readInstalled();
   if (plugins.length > 0) {
-    lines.push({ level: "ok", message: `${plugins.length} plugin(s) installed; they update with lanes (see 'lanes plugin list')` });
+    lines.push({
+      level: "ok",
+      message: `${plugins.length} plugin(s) installed; they update with lanes (see 'lanes plugin list')`
+    });
   }
 
   if (process.env.LANES_NO_AUTO_UPDATE) {

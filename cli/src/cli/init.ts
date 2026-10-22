@@ -56,7 +56,10 @@ export async function interactiveInit(repoRoot: string, options: InitOptions = {
     const firstFolder = folderCandidates[0] ?? DEFAULT_BASE.folder;
     return writeConfig(
       repoRoot,
-      existing ?? { ...DEFAULT_CONFIG, bases: [{ ...DEFAULT_BASE, name: suggestBaseName(firstFolder), folder: firstFolder }] }
+      existing ?? {
+        ...DEFAULT_CONFIG,
+        bases: [{ ...DEFAULT_BASE, name: suggestBaseName(firstFolder), folder: firstFolder }]
+      }
     );
   }
 
@@ -107,7 +110,7 @@ async function askAll(
     existing?.branchPrefix ?? DEFAULT_CONFIG.branchPrefix
   );
   // The prefix is glued to the lane name as-is, so `alex` (no slash) yields `alex1437`.
-  if (branchPrefix && !/[\/_-]$/.test(branchPrefix)) {
+  if (branchPrefix && !/[/_-]$/.test(branchPrefix)) {
     console.log(
       pc.yellow(
         `Branch prefix '${branchPrefix}' has no trailing separator, so branches will be named like '${branchPrefix}${lanePrefix}1437'.`
@@ -301,7 +304,11 @@ async function promptBaseCommands(
       // The document may need a plugin that is not installed yet; offer it now rather
       // than at the first lane.
       if (lists.plugins) {
-        await ensurePlugins({ ...DEFAULT_CONFIG, bases: [{ ...base, open: lists.open ?? [] }], plugins: lists.plugins });
+        await ensurePlugins({
+          ...DEFAULT_CONFIG,
+          bases: [{ ...base, open: lists.open ?? [] }],
+          plugins: lists.plugins
+        });
       }
       return { lists, source };
     }
@@ -347,7 +354,10 @@ async function promptCopyFrom(
   return answer === NONE ? null : (withLists.find((base) => base.name === answer) ?? null);
 }
 
-async function promptCommandLists(wizard: Wizard, existingBase: BaseConfig | undefined): Promise<Partial<LaneCommands>> {
+async function promptCommandLists(
+  wizard: Wizard,
+  existingBase: BaseConfig | undefined
+): Promise<Partial<LaneCommands>> {
   const lists: Partial<LaneCommands> = { open: await promptOpenList(wizard, existingBase?.open ?? []) };
   for (const list of ["create", "remove"] as const) {
     const lines = await promptLineList(wizard, list, existingBase?.[list] ?? []);
@@ -363,7 +373,11 @@ async function promptCommandLists(wizard: Wizard, existingBase: BaseConfig | und
 async function promptOpenList(wizard: Wizard, current: string[]): Promise<string[]> {
   const askers = installedPlugins().filter((plugin) => plugin.prompt);
   console.log("");
-  console.log(pc.cyan(`Commands run ${listLabel("open")} (e.g. cursor .${askers.length ? `, or a ${askers.map((plugin) => plugin.name).join("/")} entry` : ""})`));
+  console.log(
+    pc.cyan(
+      `Commands run ${listLabel("open")} (e.g. cursor .${askers.length ? `, or a ${askers.map((plugin) => plugin.name).join("/")} entry` : ""})`
+    )
+  );
   const lines: string[] = [];
   for (let index = 0; ; index += 1) {
     const existingLine: string | undefined = current[index];
@@ -382,7 +396,11 @@ async function promptOpenList(wizard: Wizard, current: string[]): Promise<string
       plugin = askers.find((candidate) => candidate.name === kind);
     }
     const line = plugin
-      ? shellJoin(["lanes", plugin.name, ...(await plugin.prompt!(wizard, existingPlugin === plugin ? existingWords!.slice(1) : undefined))])
+      ? shellJoin([
+          "lanes",
+          plugin.name,
+          ...(await plugin.prompt!(wizard, existingPlugin === plugin ? existingWords!.slice(1) : undefined))
+        ])
       : await wizard.validated("Command to run in the lane folder (e.g. cursor .)", existingLine, (value) =>
           validateWith(() => validateCommandLine(value, "command"))
         );

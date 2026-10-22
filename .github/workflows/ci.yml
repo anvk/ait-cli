@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Formatting
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Some tests make commits in scratch repositories.
+      GIT_AUTHOR_NAME: CI
+      GIT_AUTHOR_EMAIL: ci@example.com
+      GIT_COMMITTER_NAME: CI
+      GIT_COMMITTER_EMAIL: ci@example.com
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Plugin API
+        working-directory: plugins/api
+        run: npm ci
+      - name: Warp plugin
+        working-directory: plugins/warp
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          npm test
+      - name: CLI
+        working-directory: cli
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          npm test

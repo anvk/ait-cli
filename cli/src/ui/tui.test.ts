@@ -6,7 +6,16 @@ const mark = (text: string) => `<${text}>`;
 
 test("paintLine truncates to the width before painting", () => {
   assert.equal(paintLine([{ text: "abc" }, { text: "def", paint: mark }], 5), "abc<de>");
-  assert.equal(paintLine([{ text: "abcdef", paint: mark }, { text: "gh", paint: mark }], 3), "<abc>");
+  assert.equal(
+    paintLine(
+      [
+        { text: "abcdef", paint: mark },
+        { text: "gh", paint: mark }
+      ],
+      3
+    ),
+    "<abc>"
+  );
   assert.equal(paintLine([{ text: "ab" }], 10), "ab");
 });
 
@@ -15,6 +24,7 @@ test("charLength counts code points", () => {
 });
 
 const lines = ["a", "b", "c", "d", "e", "f"];
+// eslint-disable-next-line no-control-regex -- matches the terminal colour codes the TUI writes
 const strip = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, "");
 
 test("scrollWindow keeps the highlighted line visible and marks cut-off lines", () => {

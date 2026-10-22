@@ -97,7 +97,11 @@ export async function runCreateCommand(
 
   createLaneFolder(configDir, config, location, options);
   if (options.open) {
-    openLane(configDir, config, location, { ...options, created: true, runSetup: await askToRunSetup(config, location.base) });
+    openLane(configDir, config, location, {
+      ...options,
+      created: true,
+      runSetup: await askToRunSetup(config, location.base)
+    });
   }
 }
 
@@ -190,7 +194,12 @@ export async function runLanesCommand(
       case "cancel":
         return;
       case "open":
-        openLane(configDir, config, locateInBase(configDir, findBase(config, result.item.baseName), result.item.laneName), options);
+        openLane(
+          configDir,
+          config,
+          locateInBase(configDir, findBase(config, result.item.baseName), result.item.laneName),
+          options
+        );
         return;
       case "create":
         await runOpenCommand(result.laneId, { ...options, base: result.baseName }, repoOption);
@@ -204,7 +213,11 @@ export async function runLanesCommand(
             const { branches, total } = searchRemoteBranches(baseRepoRoot, query);
             const items = branches.map((remote) => {
               const holder = holders.get(remote.name);
-              const note = holder ? (holder.laneName ? `lane ${holder.laneName}` : `checked out in ${holder.folder}`) : null;
+              const note = holder
+                ? holder.laneName
+                  ? `lane ${holder.laneName}`
+                  : `checked out in ${holder.folder}`
+                : null;
               return { ...remote, note };
             });
             return { items, total };
@@ -286,7 +299,9 @@ export async function runPurgeCommand(options: { days?: string; force?: boolean 
   for (const candidate of purgeCandidates) {
     const baseTag = showBase ? ` [${candidate.baseName}]` : "";
     const loses = candidate.uncommitted ? pc.red(`, ${candidate.uncommitted} uncommitted file(s) will be lost`) : "";
-    console.log(`- ${candidate.laneName}${baseTag} (last update: ${new Date(candidate.lastUpdatedMs).toISOString()}${loses})`);
+    console.log(
+      `- ${candidate.laneName}${baseTag} (last update: ${new Date(candidate.lastUpdatedMs).toISOString()}${loses})`
+    );
   }
 
   const confirmationToken = `PURGE ${purgeCandidates.length}`;
@@ -355,7 +370,10 @@ export function runPruneCommand(repoOption?: string): void {
 // re-running init. Lists the document does not mention are left as they are.
 // Lines that run on every open come from the template's owner, so a change to them is
 // shown line by line and applied only once you say so (or pass --yes).
-export async function runCommandsUpdateCommand(options: BaseOption & { yes?: boolean }, repoOption?: string): Promise<void> {
+export async function runCommandsUpdateCommand(
+  options: BaseOption & { yes?: boolean },
+  repoOption?: string
+): Promise<void> {
   const { configDir, config } = loadWorkspace(repoOption);
   const targets = options.base ? [findBase(config, options.base)] : config.bases;
 
@@ -384,7 +402,9 @@ export async function runCommandsUpdateCommand(options: BaseOption & { yes?: boo
         `  ${list}:`,
         ...before[list].filter((line) => !next.includes(line)).map((line) => pc.red(`    - ${line}`)),
         ...next.filter((line) => !before[list].includes(line)).map((line) => pc.green(`    + ${line}`)),
-        ...(next.every((line) => before[list].includes(line)) && before[list].every((line) => next.includes(line)) ? [pc.dim("    (same lines, new order)")] : [])
+        ...(next.every((line) => before[list].includes(line)) && before[list].every((line) => next.includes(line))
+          ? [pc.dim("    (same lines, new order)")]
+          : [])
       ];
     });
     const pluginChanges = Object.entries(lists.plugins ?? {})

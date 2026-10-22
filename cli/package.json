@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node tools/build-clonedir.mjs && node tools/build-bin-mode.mjs",
+    "typecheck": "tsc -p tsconfig.test.json",
     "start": "node ./dist/bin/lanes.js",
     "dev": "tsx ./src/bin/lanes.ts",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",

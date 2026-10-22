@@ -33,7 +33,6 @@ export function reposRoot(): string {
   return path.join(pluginsRoot(), ".repos");
 }
 
-
 export function readInstalled(): InstalledPlugin[] {
   try {
     const parsed = JSON.parse(fs.readFileSync(pluginsFile(), "utf8")) as Partial<PluginsFile>;
@@ -55,7 +54,12 @@ export function pluginLink(name: string): string {
   return path.join(pluginsRoot(), name);
 }
 
-export function pluginPackage(dir: string): { name?: string; main?: string; lanes?: { name?: unknown; api?: unknown }; scripts?: Record<string, string> } {
+export function pluginPackage(dir: string): {
+  name?: string;
+  main?: string;
+  lanes?: { name?: unknown; api?: unknown };
+  scripts?: Record<string, string>;
+} {
   return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as ReturnType<typeof pluginPackage>;
 }
 

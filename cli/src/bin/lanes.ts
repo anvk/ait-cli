@@ -97,7 +97,9 @@ withOpenOptions(
     .argument(...LANE_ID)
     .option("--no-open", "Do not run the open commands after creation"),
   "Base to create the lane from (required when several bases are configured)"
-).action((laneId: string, options: OpenCommandOptions & { open: boolean }) => runCreateCommand(laneId, options, repo()));
+).action((laneId: string, options: OpenCommandOptions & { open: boolean }) =>
+  runCreateCommand(laneId, options, repo())
+);
 
 withOpenOptions(
   program

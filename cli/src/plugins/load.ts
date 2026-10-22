@@ -32,7 +32,9 @@ export async function importPlugin(dir: string, expectedName?: string): Promise<
     throw new Error(`${entry} does not export a plugin as its default export`);
   }
   if (plugin.api !== API_VERSION) {
-    throw new Error(`built against plugin API ${String(plugin.api)}, this version of lanes speaks ${API_VERSION}; update the plugin or lanes`);
+    throw new Error(
+      `built against plugin API ${String(plugin.api)}, this version of lanes speaks ${API_VERSION}; update the plugin or lanes`
+    );
   }
   if (typeof plugin.name !== "string" || !/^[a-z][a-z0-9-]*$/.test(plugin.name)) {
     throw new Error(`plugin name ${JSON.stringify(plugin.name)} must be lowercase letters, digits and dashes`);

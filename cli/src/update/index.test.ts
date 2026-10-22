@@ -13,7 +13,13 @@ function repoWithPackage(): { root: string; packageRoot: string; git: (args: str
     const result = spawnSync("git", args, {
       cwd: root,
       encoding: "utf8",
-      env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" }
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "t",
+        GIT_AUTHOR_EMAIL: "t@t",
+        GIT_COMMITTER_NAME: "t",
+        GIT_COMMITTER_EMAIL: "t@t"
+      }
     });
     assert.equal(result.status, 0, result.stderr);
     return result.stdout.trim();
@@ -31,7 +37,10 @@ function repoWithPackage(): { root: string; packageRoot: string; git: (args: str
 test("a dependency change in the package's own package.json calls for npm install", () => {
   const { root, packageRoot, git } = repoWithPackage();
   const from = git(["rev-parse", "HEAD"]);
-  fs.writeFileSync(path.join(packageRoot, "package.json"), '{"dependencies":{"lanes-plugin-api":"file:../plugins/api"}}\n');
+  fs.writeFileSync(
+    path.join(packageRoot, "package.json"),
+    '{"dependencies":{"lanes-plugin-api":"file:../plugins/api"}}\n'
+  );
   git(["commit", "-qam", "two"]);
   assert.equal(npmInstallNeeded({ packageRoot }, from), true);
   fs.rmSync(root, { recursive: true, force: true });

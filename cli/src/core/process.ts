@@ -19,11 +19,7 @@ function formatCommand(command: string, args: string[]): string {
   return `${command} ${args.join(" ")}`.trim();
 }
 
-export function run(
-  command: string,
-  args: string[],
-  options: SpawnSyncOptionsWithBufferEncoding = {}
-): RunResult {
+export function run(command: string, args: string[], options: SpawnSyncOptionsWithBufferEncoding = {}): RunResult {
   const result = spawnSync(command, args, {
     encoding: "utf8",
     stdio: "pipe",
@@ -62,7 +58,6 @@ export function commandExists(command: string): boolean {
   const result = spawnSync(command, ["--version"], { stdio: "ignore" });
   return result.status === 0;
 }
-
 
 export interface RunResultWithStatus extends RunResult {
   status: number | null;
