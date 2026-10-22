@@ -58,7 +58,11 @@ export interface Leftover {
 export interface Asker {
   ask(label: string, defaultValue?: string): Promise<string>;
   // Re-asks until `validate` returns null.
-  validated(label: string, defaultValue: string | undefined, validate: (value: string) => string | null): Promise<string>;
+  validated(
+    label: string,
+    defaultValue: string | undefined,
+    validate: (value: string) => string | null
+  ): Promise<string>;
   required(label: string, validate: (value: string) => string | null): Promise<string>;
   // Empty is a real answer: the default reads `none`, and typing `none` clears a value.
   optional(label: string, current: string): Promise<string>;

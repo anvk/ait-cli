@@ -34,7 +34,7 @@ export async function loadCommandsFromSource(source: string, cwd: string): Promi
   } catch (error) {
     const wrapped = `Could not load commands from ${source}: ${message(error)}`;
     cache.set(source, { error: wrapped });
-    throw new Error(wrapped);
+    throw new Error(wrapped, { cause: error });
   }
 }
 
@@ -109,7 +109,7 @@ async function fetchUrl(source: string): Promise<string> {
     const hint = hasGh
       ? " (gh could not read it either; check `gh auth status` for a private repository)"
       : " (for a private repository, install the GitHub CLI and run `gh auth login`)";
-    throw new Error(`${message(error)}${hint}`);
+    throw new Error(`${message(error)}${hint}`, { cause: error });
   }
 }
 

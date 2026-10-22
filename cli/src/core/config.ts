@@ -284,7 +284,9 @@ export function parseOpenDocument(text: string, label: string): CommandDocument 
 }
 
 export function listLabel(list: CommandList): string {
-  return { open: "when a lane opens", create: "once after a lane is created", remove: "before a lane is removed" }[list];
+  return { open: "when a lane opens", create: "once after a lane is created", remove: "before a lane is removed" }[
+    list
+  ];
 }
 
 function parsePositiveInt(value: unknown, fieldName: string): number {

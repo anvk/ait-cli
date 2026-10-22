@@ -26,10 +26,10 @@ install:
 This folder holds the plugins that ship with `lanes`, and `api/`, the interface they are written
 against.
 
-| Folder | What it is |
-| --- | --- |
-| `api/` | `lanes-plugin-api`: the `Plugin` interface, the lane environment names, the API version |
-| `warp/` | `lanes warp tab`: a lane's folders as Warp tabs ([README](warp/README.md)) |
+| Folder  | What it is                                                                              |
+| ------- | --------------------------------------------------------------------------------------- |
+| `api/`  | `lanes-plugin-api`: the `Plugin` interface, the lane environment names, the API version |
+| `warp/` | `lanes warp tab`: a lane's folders as Warp tabs ([README](warp/README.md))              |
 
 ## Writing a plugin
 
@@ -49,7 +49,10 @@ my-plugin/
   "main": "dist/index.js",
   "lanes": { "name": "tmux", "api": 1 },
   "scripts": { "build": "tsc -p tsconfig.json" },
-  "dependencies": { "commander": "^12.1.0", "lanes-plugin-api": "git+https://github.com/anvk/lanes.git#path:plugins/api" },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "lanes-plugin-api": "git+https://github.com/anvk/lanes.git#path:plugins/api"
+  },
   "devDependencies": { "typescript": "^5.8.2", "@types/node": "^22.13.10" }
 }
 ```
@@ -80,34 +83,34 @@ const plugin: Plugin = {
 export default plugin;
 ```
 
-| Member | When `lanes` calls it |
-| --- | --- |
-| `api` | Checked at load. Must equal `API_VERSION` from `lanes-plugin-api`; a mismatch is reported, the plugin is not loaded. |
-| `name` | The subcommand: `lanes <name> …`. Lowercase letters, digits, dashes. Must match `lanes.name` in `package.json`. |
-| `register(command)` | At startup, with the `Command` for `lanes <name>`. Add subcommands with `command.command("sub")` on that instance; do not construct your own `Command` for them, so they share `lanes`'s commander. |
-| `validate(words)` | Whenever a config or document with a `lanes <name> …` line is read, with the words after `lanes <name>`. Throw with a reason to reject the line; a bad flag then fails at load rather than when the lane opens. |
-| `setupCommands(words)` | When a lane has just been created, to build the `Run the env setup script (…)? [y/N]` prompt. Return human-readable lines for anything the command would only run on creation, or `[]`. |
-| `doctor()` | From `lanes doctor`, only when some base in the workspace uses the plugin. Return `{ level: "ok" \| "warn" \| "fail", message }` lines. |
-| `forget(key)` | When a lane is removed or purged. Delete whatever you wrote for the lane with this key. |
-| `findLeftovers(knownKeys)` | From `lanes prune` and `lanes doctor`. Return files you wrote for keys no longer in the list, grouped by key; `lanes` deletes them. |
-| `closeCurrentTab()` (optional) | For `--close-current-tab`. Close the terminal tab the command runs in when it is yours and return `true`; otherwise return `false`. |
-| `prompt(ask, existing?)` (optional) | From `lanes init`, when the user picks your plugin for an `open` entry. Ask your questions through `ask` and return the words after `lanes <name>`. `existing` holds the words of the line being edited. |
+| Member                              | When `lanes` calls it                                                                                                                                                                                           |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api`                               | Checked at load. Must equal `API_VERSION` from `lanes-plugin-api`; a mismatch is reported, the plugin is not loaded.                                                                                            |
+| `name`                              | The subcommand: `lanes <name> …`. Lowercase letters, digits, dashes. Must match `lanes.name` in `package.json`.                                                                                                 |
+| `register(command)`                 | At startup, with the `Command` for `lanes <name>`. Add subcommands with `command.command("sub")` on that instance; do not construct your own `Command` for them, so they share `lanes`'s commander.             |
+| `validate(words)`                   | Whenever a config or document with a `lanes <name> …` line is read, with the words after `lanes <name>`. Throw with a reason to reject the line; a bad flag then fails at load rather than when the lane opens. |
+| `setupCommands(words)`              | When a lane has just been created, to build the `Run the env setup script (…)? [y/N]` prompt. Return human-readable lines for anything the command would only run on creation, or `[]`.                         |
+| `doctor()`                          | From `lanes doctor`, only when some base in the workspace uses the plugin. Return `{ level: "ok" \| "warn" \| "fail", message }` lines.                                                                         |
+| `forget(key)`                       | When a lane is removed or purged. Delete whatever you wrote for the lane with this key.                                                                                                                         |
+| `findLeftovers(knownKeys)`          | From `lanes prune` and `lanes doctor`. Return files you wrote for keys no longer in the list, grouped by key; `lanes` deletes them.                                                                             |
+| `closeCurrentTab()` (optional)      | For `--close-current-tab`. Close the terminal tab the command runs in when it is yours and return `true`; otherwise return `false`.                                                                             |
+| `prompt(ask, existing?)` (optional) | From `lanes init`, when the user picks your plugin for an `open` entry. Ask your questions through `ask` and return the words after `lanes <name>`. `existing` holds the words of the line being edited.        |
 
 ### What a command gets at run time
 
 `lanes` runs each line of a list with `sh -c` in the lane folder, with the lane described in the
 environment. `lanes-plugin-api` exports the names as `ENV`:
 
-| `ENV.…` | Variable | Value |
-| --- | --- | --- |
-| `lane` | `LANE_NAME` | lane name, e.g. `ABC-1437` |
-| `lanePath` | `LANE_PATH` | the lane folder (also the working directory) |
-| `laneKey` | `LANE_KEY` | unique across the workspace and stable: always `<base>-<lane>`, such as `api-ABC-1437`. File things under it; `forget(key)` gets the same value. |
-| `laneLabel` | `LANE_LABEL` | what people see: `ABC-1437 (api)` |
-| `branch`, `base`, `root` | `LANE_BRANCH`, `LANE_BASE`, `LANE_ROOT` | the branch, the base name, the workspace folder |
-| `created` | `LANE_CREATED` | `1` while the lane is opened right after creation |
-| `runSetup` | `LANE_RUN_SETUP` | `1` when the setup prompt was accepted: include what you reported in `setupCommands` |
-| `afterDir` | `LANE_AFTER_DIR` | see below; set only while `lanes` runs a list |
+| `ENV.…`                  | Variable                                | Value                                                                                                                                            |
+| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lane`                   | `LANE_NAME`                             | lane name, e.g. `ABC-1437`                                                                                                                       |
+| `lanePath`               | `LANE_PATH`                             | the lane folder (also the working directory)                                                                                                     |
+| `laneKey`                | `LANE_KEY`                              | unique across the workspace and stable: always `<base>-<lane>`, such as `api-ABC-1437`. File things under it; `forget(key)` gets the same value. |
+| `laneLabel`              | `LANE_LABEL`                            | what people see: `ABC-1437 (api)`                                                                                                                |
+| `branch`, `base`, `root` | `LANE_BRANCH`, `LANE_BASE`, `LANE_ROOT` | the branch, the base name, the workspace folder                                                                                                  |
+| `created`                | `LANE_CREATED`                          | `1` while the lane is opened right after creation                                                                                                |
+| `runSetup`               | `LANE_RUN_SETUP`                        | `1` when the setup prompt was accepted: include what you reported in `setupCommands`                                                             |
+| `afterDir`               | `LANE_AFTER_DIR`                        | see below; set only while `lanes` runs a list                                                                                                    |
 
 Run from a plain shell, none of these are set. Fall back to the current folder so the
 command is useful on its own (`lanes warp tab Logs --command 'tail -f app.log'` opens one tab

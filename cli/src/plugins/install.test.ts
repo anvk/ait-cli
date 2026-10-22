@@ -16,7 +16,11 @@ test("a git URL may carry the folder of the plugin inside the repository", () =>
     location: "git@github.com:x/lanes-plugin-tmux.git",
     subdir: ""
   });
-  assert.deepEqual(parseSource("ssh://git@host/x/y.git#/plugins/a/"), { kind: "git", location: "ssh://git@host/x/y.git", subdir: "plugins/a" });
+  assert.deepEqual(parseSource("ssh://git@host/x/y.git#/plugins/a/"), {
+    kind: "git",
+    location: "ssh://git@host/x/y.git",
+    subdir: "plugins/a"
+  });
 });
 
 test("anything else is a folder that must exist", () => {

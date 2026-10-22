@@ -44,9 +44,7 @@ export function ensureWarpRunning(): void {
   }
 
   // Opening the URI starts Warp on its own, so a slow start is not fatal.
-  console.log(
-    pc.yellow(`Warp did not report as running within ${WARP_STARTUP_TIMEOUT_MS / 1000}s; opening anyway.`)
-  );
+  console.log(pc.yellow(`Warp did not report as running within ${WARP_STARTUP_TIMEOUT_MS / 1000}s; opening anyway.`));
 }
 
 // Warp exposes no URI for closing a tab, so the pane's shell is signalled to exit and

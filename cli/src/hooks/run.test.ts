@@ -20,7 +20,14 @@ const ctx: LaneContext = {
 
 test("shellSplit handles quotes and escapes", () => {
   assert.deepEqual(shellSplit(`lanes warp tab API --command 'claude --continue' --path server`), [
-    "lanes", "warp", "tab", "API", "--command", "claude --continue", "--path", "server"
+    "lanes",
+    "warp",
+    "tab",
+    "API",
+    "--command",
+    "claude --continue",
+    "--path",
+    "server"
   ]);
   assert.deepEqual(shellSplit(`echo "a \\"b\\" c" d\\ e ''`), ["echo", 'a "b" c', "d e", ""]);
   assert.throws(() => shellSplit("echo 'open"), /unterminated single quote/);
@@ -34,13 +41,21 @@ test("shellJoin quotes only what needs it and round-trips", () => {
 });
 
 test("placeholders are substituted shell-quoted", () => {
-  assert.equal(substitute("tmux new-window -c {path} -n {lane}", ctx), "tmux new-window -c /w/lanes/api/ABC-1 -n ABC-1");
+  assert.equal(
+    substitute("tmux new-window -c {path} -n {lane}", ctx),
+    "tmux new-window -c /w/lanes/api/ABC-1 -n ABC-1"
+  );
   assert.equal(substitute("echo {branch} {base} {root}", ctx), "echo alex/ABC-1 api /w");
   assert.equal(substitute("echo {a,b} {lane}", { ...ctx, laneName: "DEV 1" }), "echo {a,b} 'DEV 1'");
 });
 
 test("a line starting with lanes runs this same lanes", () => {
-  assert.ok(isLanesLine("lanes warp tab API") && isLanesLine("  lanes") && !isLanesLine("lanesplitting is a thing") && !isLanesLine("cursor ."));
+  assert.ok(
+    isLanesLine("lanes warp tab API") &&
+      isLanesLine("  lanes") &&
+      !isLanesLine("lanesplitting is a thing") &&
+      !isLanesLine("cursor .")
+  );
   assert.deepEqual(lanesWords("lanes warp tab API --color red"), ["warp", "tab", "API", "--color", "red"]);
   assert.equal(lanesWords("cursor ."), null);
   const line = substitute("lanes warp tab API", ctx);

@@ -72,7 +72,7 @@ export function resolveInstallPaths(): InstallPaths {
   const marker = readInstallMarker().installDir;
   const expected = marker ?? defaultInstallDir();
 
-  let managed = false;
+  let managed: boolean;
   try {
     managed = fs.realpathSync(expected) === packageRoot;
   } catch {

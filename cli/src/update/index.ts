@@ -83,11 +83,15 @@ function startBackgroundCheck(info: InstallPaths): void {
 // in a subfolder of the checkout, so the diff is run from there: run from the git root,
 // the bare file names would name files that do not exist and the diff would be empty.
 export function npmInstallNeeded(info: Pick<InstallPaths, "packageRoot">, from: string): boolean {
-  const changed = runAllowFailure("git", ["diff", "--name-only", from, "HEAD", "--", "package-lock.json", "package.json"], {
-    cwd: info.packageRoot,
-    timeout: 60_000,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
-  });
+  const changed = runAllowFailure(
+    "git",
+    ["diff", "--name-only", from, "HEAD", "--", "package-lock.json", "package.json"],
+    {
+      cwd: info.packageRoot,
+      timeout: 60_000,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
+    }
+  );
   return changed.status !== 0 || changed.stdout.length > 0;
 }
 

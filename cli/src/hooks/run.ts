@@ -44,7 +44,11 @@ export function substitute(line: string, ctx: LaneContext): string {
     if (placeholder) {
       const value = PLACEHOLDERS[placeholder[1]](ctx);
       out +=
-        quote === '"' ? value.replace(/(["\\$`])/g, "\\$1") : quote === "'" ? `'${shellQuote(value)}'` : shellQuote(value);
+        quote === '"'
+          ? value.replace(/(["\\$`])/g, "\\$1")
+          : quote === "'"
+            ? `'${shellQuote(value)}'`
+            : shellQuote(value);
       i += placeholder[0].length - 1;
       continue;
     }
@@ -111,7 +115,10 @@ export function runList(ctx: LaneContext, lines: string[], options: RunListOptio
       runLine(line, ctx, env, options.failureNote);
     }
     if (afterDir) {
-      for (const entry of fs.readdirSync(afterDir).filter((name) => name.endsWith(".flush")).sort()) {
+      for (const entry of fs
+        .readdirSync(afterDir)
+        .filter((name) => name.endsWith(".flush"))
+        .sort()) {
         runLine(fs.readFileSync(path.join(afterDir, entry), "utf8").trim(), ctx, env, options.failureNote);
       }
     }

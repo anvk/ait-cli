@@ -58,7 +58,11 @@ test("bases fall back to the top-level lists", () => {
     bases: [{ ...base("api"), open: undefined }, base("web", { remove: [] })]
   });
   assert.equal(config.bases[0].open, undefined);
-  assert.deepEqual(resolveBaseCommands(config, config.bases[0]), { open: ["cursor ."], create: [], remove: ["make down"] });
+  assert.deepEqual(resolveBaseCommands(config, config.bases[0]), {
+    open: ["cursor ."],
+    create: [],
+    remove: ["make down"]
+  });
   assert.deepEqual(resolveBaseCommands(config, config.bases[1]), { open: [CLAUDE_TAB], create: [], remove: [] });
 });
 
@@ -119,7 +123,10 @@ test("oldLaneDays must be a positive integer", () => {
 
 test("a document holds command lists and plugin sources, or a bare list of open lines", () => {
   assert.deepEqual(
-    parseOpenDocument(JSON.stringify({ open: ["cursor ."], remove: ["make down"], plugins: { tmux: "https://x/t.git" } }), "doc"),
+    parseOpenDocument(
+      JSON.stringify({ open: ["cursor ."], remove: ["make down"], plugins: { tmux: "https://x/t.git" } }),
+      "doc"
+    ),
     { open: ["cursor ."], remove: ["make down"], plugins: { tmux: "https://x/t.git" } }
   );
   assert.deepEqual(parseOpenDocument(JSON.stringify(["cursor ."]), "doc"), { open: ["cursor ."] });

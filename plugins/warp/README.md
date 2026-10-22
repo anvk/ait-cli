@@ -21,15 +21,15 @@ lanes plugin install https://github.com/anvk/lanes.git#plugins/warp
 lanes warp tab <title> [--path <dir>] [--color <c>] [--command <cmd>] [--setup <cmd>] [--group] [--new-window]
 ```
 
-| Flag | Meaning |
-| --- | --- |
-| `<title>` | Pane name; the lane is appended: `Server - ABC-1437`, or `Server - ABC-1437 (api)` with several bases. A command that sets its own title (like `claude`) overrides it. |
-| `--path <dir>` | Folder relative to the lane (default `.`). A missing folder falls back to the lane root with a warning. |
-| `--color <c>` | `red`, `green`, `yellow`, `blue`, `magenta` or `cyan`. |
-| `--command <cmd>` | Run when the tab opens. |
-| `--setup <cmd>` | Run in this tab, after `--command`, only right after the lane is created and if you agreed to the setup prompt. |
-| `--group` | Open the lane's tabs as one Warp tab group named after the lane (always a new window). Any tab with it makes the whole set a group. |
-| `--new-window` | Open the lane's tabs in a new Warp window instead of the active one. |
+| Flag              | Meaning                                                                                                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<title>`         | Pane name; the lane is appended: `Server - ABC-1437`, or `Server - ABC-1437 (api)` with several bases. A command that sets its own title (like `claude`) overrides it. |
+| `--path <dir>`    | Folder relative to the lane (default `.`). A missing folder falls back to the lane root with a warning.                                                                |
+| `--color <c>`     | `red`, `green`, `yellow`, `blue`, `magenta` or `cyan`.                                                                                                                 |
+| `--command <cmd>` | Run when the tab opens.                                                                                                                                                |
+| `--setup <cmd>`   | Run in this tab, after `--command`, only right after the lane is created and if you agreed to the setup prompt.                                                        |
+| `--group`         | Open the lane's tabs as one Warp tab group named after the lane (always a new window). Any tab with it makes the whole set a group.                                    |
+| `--new-window`    | Open the lane's tabs in a new Warp window instead of the active one.                                                                                                   |
 
 When `lanes` runs a lane's `open` list, the Warp tabs in it are collected and opened together at
 the end, so they land in one window in the configured order. Run from your own shell,

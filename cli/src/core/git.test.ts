@@ -6,7 +6,13 @@ import os from "node:os";
 import path from "node:path";
 import { hasOrigin } from "./git.js";
 
-const env = { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
+const env = {
+  ...process.env,
+  GIT_AUTHOR_NAME: "t",
+  GIT_AUTHOR_EMAIL: "t@t",
+  GIT_COMMITTER_NAME: "t",
+  GIT_COMMITTER_EMAIL: "t@t"
+};
 
 function git(cwd: string, args: string[]): void {
   const result = spawnSync("git", args, { cwd, env, encoding: "utf8" });

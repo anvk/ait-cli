@@ -8,7 +8,10 @@ import { importPlugin } from "./load.js";
 // A plugin folder as `lanes plugin install` leaves it: a package.json and a built entry.
 function fakePlugin(body: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lanes-fake-plugin-"));
-  fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "lanes-plugin-fake", main: "dist/index.js", lanes: { name: "fake", api: 1 } }));
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify({ name: "lanes-plugin-fake", main: "dist/index.js", lanes: { name: "fake", api: 1 } })
+  );
   fs.mkdirSync(path.join(dir, "dist"));
   fs.writeFileSync(path.join(dir, "dist", "index.js"), body);
   return dir;

@@ -99,7 +99,9 @@ export class Wizard {
   async positiveInt(label: string, current: number): Promise<number> {
     const answer = await this.validated(label, String(current), (value) => {
       const parsed = Number.parseInt(value, 10);
-      return Number.isInteger(parsed) && parsed > 0 && String(parsed) === value ? null : "Enter a positive whole number.";
+      return Number.isInteger(parsed) && parsed > 0 && String(parsed) === value
+        ? null
+        : "Enter a positive whole number.";
     });
     return Number.parseInt(answer, 10);
   }

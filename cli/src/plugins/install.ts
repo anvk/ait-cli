@@ -50,7 +50,11 @@ export function parseSource(input: string): PluginSource {
 }
 
 function git(cwd: string, args: string[]) {
-  return runAllowFailure("git", args, { cwd, timeout: GIT_TIMEOUT_MS, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+  return runAllowFailure("git", args, {
+    cwd,
+    timeout: GIT_TIMEOUT_MS,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
+  });
 }
 
 function normalizeGitUrl(url: string): string {
@@ -81,7 +85,10 @@ function lanesCheckoutFor(url: string): string | null {
 function buildPlugin(dir: string): string | null {
   const pkg = pluginPackage(dir);
   const verb = fs.existsSync(path.join(dir, "package-lock.json")) ? "ci" : "install";
-  const installed = runAllowFailure("npm", [verb, "--no-audit", "--no-fund", "--silent"], { cwd: dir, timeout: BUILD_TIMEOUT_MS });
+  const installed = runAllowFailure("npm", [verb, "--no-audit", "--no-fund", "--silent"], {
+    cwd: dir,
+    timeout: BUILD_TIMEOUT_MS
+  });
   if (installed.status !== 0) {
     return `npm ${verb} failed: ${(installed.stderr || installed.stdout).split("\n").find(Boolean) ?? "no output"}`;
   }
@@ -144,7 +151,10 @@ export async function installPlugin(input: string): Promise<InstalledPlugin> {
       throw new Error(`The lanes checkout has no folder ${source.subdir}.`);
     }
   } else {
-    repo = path.join(reposRoot(), createHash("sha256").update(normalizeGitUrl(source.location)).digest("hex").slice(0, 12));
+    repo = path.join(
+      reposRoot(),
+      createHash("sha256").update(normalizeGitUrl(source.location)).digest("hex").slice(0, 12)
+    );
     kind = "git";
     if (isDirectory(path.join(repo, ".git"))) {
       console.log(pc.cyan(`Updating ${source.location}...`));
@@ -159,7 +169,9 @@ export async function installPlugin(input: string): Promise<InstalledPlugin> {
       const cloned = git(reposRoot(), ["clone", "--quiet", "--depth", "1", source.location, repo]);
       if (cloned.status !== 0) {
         fs.rmSync(repo, { recursive: true, force: true });
-        throw new Error(`Could not clone ${source.location}: ${cloned.stderr.split("\n").find(Boolean) ?? "git failed"}`);
+        throw new Error(
+          `Could not clone ${source.location}: ${cloned.stderr.split("\n").find(Boolean) ?? "git failed"}`
+        );
       }
     }
     dir = path.join(repo, source.subdir);
@@ -171,7 +183,9 @@ export async function installPlugin(input: string): Promise<InstalledPlugin> {
   const name = declaredName(dir);
   const existing = readInstalled().find((plugin) => plugin.name === name);
   if (existing && existing.source !== input.trim()) {
-    throw new Error(`A plugin named '${name}' is already installed from ${existing.source}. Run \`lanes plugin uninstall ${name}\` first.`);
+    throw new Error(
+      `A plugin named '${name}' is already installed from ${existing.source}. Run \`lanes plugin uninstall ${name}\` first.`
+    );
   }
 
   console.log(pc.cyan(`Building plugin '${name}'...`));
@@ -204,7 +218,11 @@ export function uninstallPlugin(name: string): void {
     throw new Error(`No plugin named '${name}' is installed. See \`lanes plugin list\`.`);
   }
   fs.rmSync(pluginLink(name), { recursive: true, force: true });
-  if (record.kind === "git" && record.repo && !installed.some((other) => other !== record && other.repo === record.repo)) {
+  if (
+    record.kind === "git" &&
+    record.repo &&
+    !installed.some((other) => other !== record && other.repo === record.repo)
+  ) {
     fs.rmSync(record.repo, { recursive: true, force: true });
   }
   writeInstalled(installed.filter((plugin) => plugin !== record));
@@ -252,7 +270,9 @@ export function updatePlugins(only?: string): string[] {
       continue;
     }
     const buildError = buildPlugin(record.dir);
-    notes.push(buildError ? `${record.name}: ${buildError}; keeping the previous build` : `${record.name}: ${before} → ${after}`);
+    notes.push(
+      buildError ? `${record.name}: ${buildError}; keeping the previous build` : `${record.name}: ${before} → ${after}`
+    );
   }
   return notes;
 }

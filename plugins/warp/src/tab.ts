@@ -119,7 +119,7 @@ export function parseTabWords(words: string[]): WarpTabSpec {
     command.parse(words, { from: "user" });
   } catch (error) {
     if (error instanceof CommanderError) {
-      throw new Error(error.message.replace(/^error:\s*/, ""));
+      throw new Error(error.message.replace(/^error:\s*/, ""), { cause: error });
     }
     throw error;
   }
@@ -292,4 +292,3 @@ function sleepSync(milliseconds: number): void {
   const buffer = new Int32Array(new SharedArrayBuffer(4));
   Atomics.wait(buffer, 0, 0, milliseconds);
 }
-

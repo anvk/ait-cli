@@ -4,7 +4,12 @@ import { laneNamesForBranch } from "./lifecycle.js";
 import type { BaseConfig, LanesConfig } from "./types.js";
 
 const base: BaseConfig = { name: "api", folder: "api-base", ref: "origin/main", lanesDir: "lanes/api" };
-const config: LanesConfig = { lanePrefix: "ABC-", branchPrefix: "alex/", oldLaneDays: 14, bases: [base], warpTabGroup: false };
+const config: LanesConfig = {
+  lanePrefix: "ABC-",
+  branchPrefix: "alex/",
+  oldLaneDays: 14,
+  bases: [base]
+};
 
 test("a branch lanes made maps back to its lane name", () => {
   assert.deepEqual(laneNamesForBranch(config, base, "alex/ABC-1437"), ["ABC-1437"]);

@@ -70,11 +70,11 @@ fails to start, it is rolled back and that commit is skipped until `main` moves 
 managed `~/.lanes-cli` install. It stands aside when that checkout has uncommitted changes, is not on `main`, or output
 is not a terminal.
 
-| | |
-| --- | --- |
-| `lanes update` | Update now |
-| `lanes update --check` | Report whether an update is waiting (exits non-zero when behind) |
-| `LANES_NO_AUTO_UPDATE=1` | Turn self-update off |
+|                          |                                                                  |
+| ------------------------ | ---------------------------------------------------------------- |
+| `lanes update`           | Update now                                                       |
+| `lanes update --check`   | Report whether an update is waiting (exits non-zero when behind) |
+| `LANES_NO_AUTO_UPDATE=1` | Turn self-update off                                             |
 
 `lanes --version` prints the commit date and short sha of the install, e.g. `2026-09-30 (a1b2c3d)`.
 
@@ -118,16 +118,16 @@ repository with no `origin` remote works too: set its `ref` to a local branch, s
 Run `lanes` anywhere inside the workspace. It opens a picker over your lanes, where you create, open, check out and
 remove them:
 
-| Key | In the search field | In the list |
-| --- | --- | --- |
-| type | filter by lane name or last commit subject | jump back to search and filter |
-| `↓` / `↑` | move into the list | move; `↑` from the top returns to search |
-| `tab` / `→` / `←` | cycle the base filter (several bases) | same |
-| `⏎` | highlight the top match, or create when nothing matches | open the lane, or the create/checkout row |
-| `n` | | create a lane, prefilled with the filter |
-| `b` | | check out a branch, prefilled with the filter |
-| `d` | | remove the lane (type `delete` to confirm) |
-| `esc` / `ctrl+c` | quit | quit |
+| Key               | In the search field                                     | In the list                                   |
+| ----------------- | ------------------------------------------------------- | --------------------------------------------- |
+| type              | filter by lane name or last commit subject              | jump back to search and filter                |
+| `↓` / `↑`         | move into the list                                      | move; `↑` from the top returns to search      |
+| `tab` / `→` / `←` | cycle the base filter (several bases)                   | same                                          |
+| `⏎`               | highlight the top match, or create when nothing matches | open the lane, or the create/checkout row     |
+| `n`               |                                                         | create a lane, prefilled with the filter      |
+| `b`               |                                                         | check out a branch, prefilled with the filter |
+| `d`               |                                                         | remove the lane (type `delete` to confirm)    |
+| `esc` / `ctrl+c`  | quit                                                    | quit                                          |
 
 If you already know the lane, `lanes 1437` (or `lanes open 1437`) opens it without the picker.
 
@@ -144,21 +144,21 @@ Outside a terminal (`lanes | cat`), `lanes` prints the same report as `lanes lis
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `lanes init [source]` | Set up or change the workspace's `.lanes.json`, suggesting the setup at `source` (a URL or path) for each base. |
-| `lanes` / `lanes pick` | The picker: create, open, check out and remove lanes. The usual way in. |
-| `lanes <id>` / `lanes open <id>` | Open the lane, creating it if needed, without the picker. |
-| `lanes create <id>` | Create only. `--no-open` skips the open commands. Fails if the lane exists. |
-| `lanes checkout <branch>` | Make a lane of an existing branch (see below); opens the lane that already has it. |
-| `lanes list` | Print lanes, recent and old. |
-| `lanes remove <id>` | Remove one lane after you type `delete`. |
-| `lanes purge [--days N] [--force]` | Remove every lane untouched for N days (default `oldLaneDays`) after you type `PURGE <count>`. Lanes with uncommitted work are kept unless `--force`. |
-| `lanes prune` | Clean up after lane folders deleted by hand (see below). |
-| `lanes commands update [--base X] [--yes]` | Re-fetch each base's command lists from its `template`, show what changed, and apply it once you confirm. |
-| `lanes plugin install\|list\|update\|uninstall` | Manage [plugins](#plugins), the `lanes <plugin> …` commands lists can use. |
-| `lanes doctor` / `lanes status` | Check the install, config, bases, plugins, the commands and their programs, and leftovers. |
-| `lanes update [--check]` | Update `lanes` now. |
+| Command                                         | What it does                                                                                                                                          |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lanes init [source]`                           | Set up or change the workspace's `.lanes.json`, suggesting the setup at `source` (a URL or path) for each base.                                       |
+| `lanes` / `lanes pick`                          | The picker: create, open, check out and remove lanes. The usual way in.                                                                               |
+| `lanes <id>` / `lanes open <id>`                | Open the lane, creating it if needed, without the picker.                                                                                             |
+| `lanes create <id>`                             | Create only. `--no-open` skips the open commands. Fails if the lane exists.                                                                           |
+| `lanes checkout <branch>`                       | Make a lane of an existing branch (see below); opens the lane that already has it.                                                                    |
+| `lanes list`                                    | Print lanes, recent and old.                                                                                                                          |
+| `lanes remove <id>`                             | Remove one lane after you type `delete`.                                                                                                              |
+| `lanes purge [--days N] [--force]`              | Remove every lane untouched for N days (default `oldLaneDays`) after you type `PURGE <count>`. Lanes with uncommitted work are kept unless `--force`. |
+| `lanes prune`                                   | Clean up after lane folders deleted by hand (see below).                                                                                              |
+| `lanes commands update [--base X] [--yes]`      | Re-fetch each base's command lists from its `template`, show what changed, and apply it once you confirm.                                             |
+| `lanes plugin install\|list\|update\|uninstall` | Manage [plugins](#plugins), the `lanes <plugin> …` commands lists can use.                                                                            |
+| `lanes doctor` / `lanes status`                 | Check the install, config, bases, plugins, the commands and their programs, and leftovers.                                                            |
+| `lanes update [--check]`                        | Update `lanes` now.                                                                                                                                   |
 
 `<id>` is a raw id (`1437`) or a full lane name (`ABC-1437`). The `lanes <id>` shortcut takes only words that start
 with a digit or look like `PREFIX-<digit>…`, so a mistyped command such as `lanes lst` fails instead of creating a lane.
@@ -217,24 +217,24 @@ rewritten on next open).
 
 Each base has up to three lists of shell command lines:
 
-| List | Runs |
-| --- | --- |
-| `open` | every time the lane opens: `lanes <id>`, `lanes open`, `lanes create`, `lanes checkout` and the picker |
-| `create` | once, right after the lane is created, when you answer yes to the setup prompt (before `open`) |
-| `remove` | before `lanes remove`/`lanes purge` deletes the lane, while its folder still exists |
+| List     | Runs                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| `open`   | every time the lane opens: `lanes <id>`, `lanes open`, `lanes create`, `lanes checkout` and the picker |
+| `create` | once, right after the lane is created, when you answer yes to the setup prompt (before `open`)         |
+| `remove` | before `lanes remove`/`lanes purge` deletes the lane, while its folder still exists                    |
 
 Commands run with `sh -c` in the lane folder, in order, with your terminal attached; one that fails is reported and
 the rest still run. They are told about the lane through the environment and through placeholders:
 
-| Variable | Placeholder | Value |
-| --- | --- | --- |
-| `LANE_NAME` | `{lane}` | lane name, e.g. `ABC-1437` |
-| `LANE_PATH` | `{path}` | the lane folder (also the working directory) |
-| `LANE_BRANCH` | `{branch}` | the branch checked out there |
-| `LANE_BASE` | `{base}` | the base's name |
-| `LANE_ROOT` | `{root}` | the workspace folder |
-| `LANE_KEY`, `LANE_LABEL` | | the lane's unique, stable key (always `<base>-<lane>`, e.g. `api-ABC-1437`) and display label (`ABC-1437 (api)`, or just `ABC-1437` with one base) |
-| `LANE_CREATED` | | `1` while the lane is being opened right after its creation |
+| Variable                 | Placeholder | Value                                                                                                                                              |
+| ------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LANE_NAME`              | `{lane}`    | lane name, e.g. `ABC-1437`                                                                                                                         |
+| `LANE_PATH`              | `{path}`    | the lane folder (also the working directory)                                                                                                       |
+| `LANE_BRANCH`            | `{branch}`  | the branch checked out there                                                                                                                       |
+| `LANE_BASE`              | `{base}`    | the base's name                                                                                                                                    |
+| `LANE_ROOT`              | `{root}`    | the workspace folder                                                                                                                               |
+| `LANE_KEY`, `LANE_LABEL` |             | the lane's unique, stable key (always `<base>-<lane>`, e.g. `api-ABC-1437`) and display label (`ABC-1437 (api)`, or just `ABC-1437` with one base) |
+| `LANE_CREATED`           |             | `1` while the lane is being opened right after its creation                                                                                        |
 
 Placeholders are quoted to fit where they stand, so `cd {path}`, `echo "{path}"` and `'{path}'` all work for any
 folder name. A line that starts with `lanes` runs
@@ -301,7 +301,10 @@ to no.
   "oldLaneDays": 14,
   "bases": [
     {
-      "name": "api", "folder": "api-base", "ref": "origin/main", "lanesDir": "lanes/api",
+      "name": "api",
+      "folder": "api-base",
+      "ref": "origin/main",
+      "lanesDir": "lanes/api",
       "template": "default",
       "open": [
         "lanes warp tab Claude --color yellow --command 'claude --continue || claude'",
@@ -310,27 +313,30 @@ to no.
       "create": ["npm install"]
     },
     {
-      "name": "web", "folder": "web-base", "ref": "origin/main", "lanesDir": "lanes/web",
+      "name": "web",
+      "folder": "web-base",
+      "ref": "origin/main",
+      "lanesDir": "lanes/web",
       "open": ["cursor ."]
     }
   ]
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `lanePrefix` | Prepended to ids: `1437` → `ABC-1437`. Optional; without it a lane is named by its id. |
-| `branchPrefix` | Prepended to new branch names: `alex/ABC-1437`. Optional. |
-| `oldLaneDays` | Splits recent from old lanes; the default for `purge`. Default `14`. |
-| `bases[].name` | Short label for listings and file names. Letters, digits, `.`, `_`, `-`. |
-| `bases[].folder` | The base clone, relative to the workspace. |
-| `bases[].ref` | Ref new lane branches start from. |
-| `bases[].lanesDir` | Where this base's lanes go. Each base needs its own, not nested in another's. |
-| `bases[].branchPrefix` | Overrides the top-level branch prefix. Optional. |
+| Field                              | Meaning                                                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `lanePrefix`                       | Prepended to ids: `1437` → `ABC-1437`. Optional; without it a lane is named by its id.               |
+| `branchPrefix`                     | Prepended to new branch names: `alex/ABC-1437`. Optional.                                            |
+| `oldLaneDays`                      | Splits recent from old lanes; the default for `purge`. Default `14`.                                 |
+| `bases[].name`                     | Short label for listings and file names. Letters, digits, `.`, `_`, `-`.                             |
+| `bases[].folder`                   | The base clone, relative to the workspace.                                                           |
+| `bases[].ref`                      | Ref new lane branches start from.                                                                    |
+| `bases[].lanesDir`                 | Where this base's lanes go. Each base needs its own, not nested in another's.                        |
+| `bases[].branchPrefix`             | Overrides the top-level branch prefix. Optional.                                                     |
 | `bases[].open`, `create`, `remove` | This base's command lists. `open` is required here or at the top level; the others default to empty. |
-| `bases[].template` | URL or path the lists came from, for `lanes commands update`. Optional. |
-| `open`, `create`, `remove` | Shared lists for bases without their own. Optional. |
-| `plugins` | Where to install each plugin the lists use: `{ "warp": "<git URL or path>" }`. Optional. |
+| `bases[].template`                 | URL or path the lists came from, for `lanes commands update`. Optional.                              |
+| `open`, `create`, `remove`         | Shared lists for bases without their own. Optional.                                                  |
+| `plugins`                          | Where to install each plugin the lists use: `{ "warp": "<git URL or path>" }`. Optional.             |
 
 A lane belongs to the base whose `lanesDir` holds it, so the same lane name can exist in two bases.
 
@@ -363,13 +369,13 @@ echo 'export LANES_REPO=/path/to/workspace' >> ~/.zshrc && export LANES_REPO=/pa
 
 The repository is laid out like this:
 
-| Folder | What it is |
-| --- | --- |
-| `cli/` | The `lanes` command (package `lanes-cli`) |
-| `plugins/api/` | `lanes-plugin-api`, the interface plugins implement |
-| `plugins/warp/` | The Warp plugin (`lanes warp tab`) |
-| `templates/` | Command documents, such as the default template |
-| `tools/install.sh` | The installer |
+| Folder             | What it is                                          |
+| ------------------ | --------------------------------------------------- |
+| `cli/`             | The `lanes` command (package `lanes-cli`)           |
+| `plugins/api/`     | `lanes-plugin-api`, the interface plugins implement |
+| `plugins/warp/`    | The Warp plugin (`lanes warp tab`)                  |
+| `templates/`       | Command documents, such as the default template     |
+| `tools/install.sh` | The installer                                       |
 
 ```bash
 git clone https://github.com/anvk/lanes.git && cd lanes/cli
@@ -378,6 +384,17 @@ npm test
 npm run build && npm link       # point the global `lanes` at this checkout
 cd ~/.lanes-cli/cli && npm link   # point it back at the managed install
 ```
+
+Formatting (Prettier) and lint (ESLint) cover the whole repository from its root; CI fails on unformatted code:
+
+```bash
+npm install                     # at the repository root
+npm run format                  # or `npm run format:check`
+npm run lint
+```
+
+Each package also has `npm run typecheck`, which includes the tests. CI runs all of this, then builds and tests every
+package on Linux and macOS.
 
 Self-update stays off in a linked development checkout. `readlink -f "$(command -v lanes)"` shows which one is active.
 

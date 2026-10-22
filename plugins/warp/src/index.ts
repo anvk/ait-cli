@@ -11,7 +11,14 @@ import {
   removeTabConfigs,
   type WarpColor
 } from "./files.js";
-import { configureTabCommand, parseTabWords, runFlushCommand, runTabCommand, tabLine, type WarpTabSpec } from "./tab.js";
+import {
+  configureTabCommand,
+  parseTabWords,
+  runFlushCommand,
+  runTabCommand,
+  tabLine,
+  type WarpTabSpec
+} from "./tab.js";
 import { shellSplit } from "./support.js";
 
 function specOf(words: string[]): WarpTabSpec {
@@ -61,7 +68,10 @@ async function promptTab(ask: Asker, existing?: string[]): Promise<string[]> {
     (value) => validateWith(() => parseTabWords([title, "--path", value]))
   );
   const color = await ask.choice("Tab color", [NONE, ...WARP_COLORS], current?.color ?? NONE);
-  const command = await ask.optional("Command to run when the tab opens (e.g. claude --continue)", current?.command ?? "");
+  const command = await ask.optional(
+    "Command to run when the tab opens (e.g. claude --continue)",
+    current?.command ?? ""
+  );
   const line = tabLine({
     title,
     path: tabPath,
@@ -125,7 +135,10 @@ const warpPlugin: Plugin = {
     lines.push(
       writableDir(launchConfigsDir)
         ? { level: "ok", message: `Warp launch configs directory is writable: ${launchConfigsDir}` }
-        : { level: "warn", message: `Warp launch configs directory is not writable (needed for --group): ${launchConfigsDir}` }
+        : {
+            level: "warn",
+            message: `Warp launch configs directory is not writable (needed for --group): ${launchConfigsDir}`
+          }
     );
     return lines;
   },

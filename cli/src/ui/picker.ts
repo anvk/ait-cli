@@ -52,10 +52,7 @@ export interface PickerOptions {
 // inside the same raw-mode loop, so `esc` can return to the list instead of
 // leaving the picker. `baseName` is the base the new lane is created in; it only
 // matters (and is only shown) with several bases.
-type Focus =
-  | { area: "search" }
-  | { area: "list"; index: number }
-  | { area: "create"; draft: string; baseName: string };
+type Focus = { area: "search" } | { area: "list"; index: number } | { area: "create"; draft: string; baseName: string };
 
 const CREATE_ROW = 0;
 const CHECKOUT_ROW = 1;

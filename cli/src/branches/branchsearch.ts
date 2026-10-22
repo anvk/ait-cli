@@ -56,9 +56,10 @@ export function rankBranches(branches: RemoteBranch[], needle: string): RemoteBr
 // `owner/name` of a github.com remote, in any of its URL spellings; `null` for anything else.
 function githubRepo(repoRoot: string): { owner: string; name: string } | null {
   const url = run("git", ["remote", "get-url", "origin"], { cwd: repoRoot }).stdout;
-  const match = /^(?:git@github\.com:|ssh:\/\/git@github\.com\/|https:\/\/(?:[^@/]+@)?github\.com\/)([^/]+)\/(.+?)(?:\.git)?\/?$/.exec(
-    url
-  );
+  const match =
+    /^(?:git@github\.com:|ssh:\/\/git@github\.com\/|https:\/\/(?:[^@/]+@)?github\.com\/)([^/]+)\/(.+?)(?:\.git)?\/?$/.exec(
+      url
+    );
   return match ? { owner: match[1], name: match[2] } : null;
 }
 

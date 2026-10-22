@@ -175,7 +175,9 @@ export function createLaneFolder(
   // The base is brought up to `ref` so the dependencies copied from it match the new lane.
   console.log(pc.cyan(`Updating ${base.folder} to ${base.ref}...`));
   if (!fastForwardTo(baseRepoRoot, base.ref)) {
-    console.log(pc.yellow(`${base.folder} could not fast-forward to ${base.ref} (it has work of its own); left as it is.`));
+    console.log(
+      pc.yellow(`${base.folder} could not fast-forward to ${base.ref} (it has work of its own); left as it is.`)
+    );
   }
   console.log(pc.cyan(`Creating ${laneName} from ${base.ref}...`));
   createOrAttachWorktree({
@@ -268,7 +270,9 @@ export function checkoutBranchLane(
       throw new Error(`Branch '${branchName}' exists neither locally nor on origin.`);
     }
   } else if (!localBranchExists(baseRepoRoot, branchName)) {
-    throw new Error(`Branch '${branchName}' does not exist in ${base.folder}, which has no 'origin' remote to fetch it from.`);
+    throw new Error(
+      `Branch '${branchName}' does not exist in ${base.folder}, which has no 'origin' remote to fetch it from.`
+    );
   }
 
   // A folder by that name is some other branch's lane (this branch's was found above).
@@ -291,7 +295,9 @@ export function checkoutBranchLane(
   const { behind } = addBranchWorktree(baseRepoRoot, location.lanePath, branchName);
   if (behind > 0) {
     console.log(
-      pc.yellow(`Local branch '${branchName}' is ${behind} commit(s) behind origin; run 'git pull' in the lane to catch up.`)
+      pc.yellow(
+        `Local branch '${branchName}' is ${behind} commit(s) behind origin; run 'git pull' in the lane to catch up.`
+      )
     );
   }
   copyBaseIntoLane(configDir, location);
@@ -324,4 +330,3 @@ export function deleteLane(configDir: string, config: LanesConfig, location: Lan
   }
   forgetLane(laneIdentity(config, location.base, location.laneName).key);
 }
-

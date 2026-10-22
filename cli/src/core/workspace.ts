@@ -85,7 +85,9 @@ export function locateLane(configDir: string, config: LanesConfig, laneId: strin
     return locateInBase(configDir, config.bases[0], laneName);
   }
 
-  const hits = config.bases.map((base) => locateInBase(configDir, base, laneName)).filter((location) => location.exists);
+  const hits = config.bases
+    .map((base) => locateInBase(configDir, base, laneName))
+    .filter((location) => location.exists);
   if (hits.length === 1) {
     return hits[0];
   }
@@ -131,7 +133,9 @@ export function laneIdentity(config: LanesConfig, base: BaseConfig, laneName: st
 // The key of every lane that exists; files under any other key were left behind by a
 // deleted lane.
 export function knownLaneKeys(configDir: string, config: LanesConfig): string[] {
-  return lanesInWorkspace(configDir, config).map((lane) => laneIdentity(config, findBase(config, lane.baseName), lane.laneName).key);
+  return lanesInWorkspace(configDir, config).map(
+    (lane) => laneIdentity(config, findBase(config, lane.baseName), lane.laneName).key
+  );
 }
 
 // macOS defaults to zsh; bash keeps login shells in .bash_profile.

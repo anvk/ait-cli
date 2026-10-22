@@ -259,7 +259,9 @@ export async function lastCommit(
   worktreePath: string
 ): Promise<{ subject: string | null; committedAtMs: number } | null> {
   try {
-    const output = (await execFileAsync("git", ["log", "-1", "--pretty=%ct%x09%s"], { cwd: worktreePath })).stdout.trim();
+    const output = (
+      await execFileAsync("git", ["log", "-1", "--pretty=%ct%x09%s"], { cwd: worktreePath })
+    ).stdout.trim();
     if (!output) {
       return null;
     }
@@ -280,7 +282,9 @@ export async function lastCommit(
 export async function uncommittedPaths(worktreePath: string): Promise<string[] | null> {
   let stdout: string;
   try {
-    stdout = (await execFileAsync("git", ["status", "--porcelain=v1", "-z"], { cwd: worktreePath, maxBuffer: 64 * 1024 * 1024 })).stdout;
+    stdout = (
+      await execFileAsync("git", ["status", "--porcelain=v1", "-z"], { cwd: worktreePath, maxBuffer: 64 * 1024 * 1024 })
+    ).stdout;
   } catch {
     return null;
   }

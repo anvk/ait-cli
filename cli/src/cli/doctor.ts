@@ -14,10 +14,29 @@ import { selfUpdateDiagnostics } from "../update/diagnostics.js";
 import { resolveLanesRoot } from "../core/lanes.js";
 import type { BaseConfig } from "../core/types.js";
 import { errorMessage } from "../core/util.js";
-import { exportLanesRepoCommand, knownLaneKeys, resolveBaseRepoRoot, resolveConfiguredRepoRoot } from "../core/workspace.js";
+import {
+  exportLanesRepoCommand,
+  knownLaneKeys,
+  resolveBaseRepoRoot,
+  resolveConfiguredRepoRoot
+} from "../core/workspace.js";
 
 // Words the shell handles itself, which a PATH lookup would wrongly report as missing.
-const SHELL_WORDS = new Set(["cd", "export", "set", "true", "false", "echo", "exit", "test", "[", "source", ".", "eval", "exec"]);
+const SHELL_WORDS = new Set([
+  "cd",
+  "export",
+  "set",
+  "true",
+  "false",
+  "echo",
+  "exit",
+  "test",
+  "[",
+  "source",
+  ".",
+  "eval",
+  "exec"
+]);
 
 // The program a command line starts with, when it is something to look up on PATH.
 function executableOf(line: string): string | undefined {
@@ -114,7 +133,9 @@ export function runDiagnosticsCommand(repoOption?: string): void {
       if (prunable.length === 0) {
         ok(`${label}: no stale git worktrees`);
       } else {
-        warn(`${label}: ${prunable.length} git worktree(s) point at deleted folders. Run 'lanes prune' to clean them up.`);
+        warn(
+          `${label}: ${prunable.length} git worktree(s) point at deleted folders. Run 'lanes prune' to clean them up.`
+        );
       }
     }
 
@@ -136,7 +157,11 @@ export function runDiagnosticsCommand(repoOption?: string): void {
     }
 
     const installed = readInstalled();
-    ok(installed.length === 0 ? "No plugins installed" : `Plugins: ${installed.map((plugin) => `${plugin.name} (${pluginVersion(plugin)}, ${describeKind(plugin)})`).join(", ")}`);
+    ok(
+      installed.length === 0
+        ? "No plugins installed"
+        : `Plugins: ${installed.map((plugin) => `${plugin.name} (${pluginVersion(plugin)}, ${describeKind(plugin)})`).join(", ")}`
+    );
     for (const broken of brokenPluginList()) {
       warn(`Plugin '${broken.name}' does not load: ${broken.reason}`);
     }

@@ -50,7 +50,9 @@ export function validateCommandLine(line: string, label: string): void {
   try {
     words = shellSplit(line);
   } catch (error) {
-    throw new Error(`Config \`${label}\`: ${error instanceof Error ? error.message : String(error)}.`);
+    throw new Error(`Config \`${label}\`: ${error instanceof Error ? error.message : String(error)}.`, {
+      cause: error
+    });
   }
   const lanes = lanesWords(line);
   if (!lanes) {
@@ -66,7 +68,12 @@ export function validateCommandLine(line: string, label: string): void {
   try {
     plugin.validate(lanes.slice(1));
   } catch (error) {
-    throw new Error(`Config \`${label}\` (${words.slice(0, 3).join(" ")}): ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Config \`${label}\` (${words.slice(0, 3).join(" ")}): ${error instanceof Error ? error.message : String(error)}`,
+      {
+        cause: error
+      }
+    );
   }
 }
 
